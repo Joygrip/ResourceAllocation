@@ -138,8 +138,8 @@ export const Actuals: React.FC = () => {
       setLoading(true);
       const [periodsData, projectsData, resourcesData] = await Promise.all([
         periodsApi.list(),
-        adminApi.listProjects(),
-        adminApi.listResources(),
+        lookupsApi.listProjects(),
+        lookupsApi.listResources(),
       ]);
       
       setPeriods(periodsData);

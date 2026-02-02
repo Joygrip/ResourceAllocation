@@ -36,7 +36,7 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { planningApi, SupplyLine, CreateSupplyLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
-import { adminApi, Resource } from '../api/admin';
+import { lookupsApi, Resource } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
@@ -115,7 +115,7 @@ export const Supply: React.FC = () => {
       setLoading(true);
       const [periodsData, resourcesData] = await Promise.all([
         periodsApi.list(),
-        adminApi.listResources(),
+        lookupsApi.listResources(),
       ]);
       
       setPeriods(periodsData);

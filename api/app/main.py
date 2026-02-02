@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from api.app.config import get_settings
-from api.app.routers import health, me, dev, periods, admin, planning, actuals, approvals, consolidation, notifications
+from api.app.routers import health, me, dev, periods, admin, planning, actuals, approvals, consolidation, notifications, lookups
 
 # Create FastAPI app
 app = FastAPI(
@@ -133,7 +133,8 @@ app.include_router(health.router)
 app.include_router(me.router)
 app.include_router(dev.router)
 app.include_router(periods.router)
-app.include_router(admin.router)
+app.include_router(lookups.router)  # Read-only lookups for all roles
+app.include_router(admin.router)  # Admin-only CRUD
 app.include_router(planning.router)
 app.include_router(actuals.router)
 app.include_router(approvals.router)

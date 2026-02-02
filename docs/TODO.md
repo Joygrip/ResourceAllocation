@@ -1,110 +1,116 @@
-# Resource Allocation App - Repair & Modernization Plan
+# Role Guard Fixes - TODO Plan
 
-## Phase 0 — Localhost Repair (P0) ✅
+## Phase 0 — Create Plan + Reproduce ✅
 
-### P0.1 Fix backend run/import path issues ✅
-- [x] Ensure `uvicorn api.app.main:app --reload` works from repo root
-- [x] Update README with correct commands for Windows PowerShell and bash
-- [x] Add note about PYTHONPATH if needed
-- **Acceptance**: API starts cleanly without ModuleNotFoundError
+### Observed Failures
 
-### P0.2 Make dev auth bypass work end-to-end ✅
-- [x] Backend: verify `DEV_AUTH_BYPASS=true` reads from `.env` correctly
-- [x] Frontend: verify `VITE_DEV_AUTH_BYPASS=true` works without MSAL
-- [x] Ensure headers `X-Dev-Role`, `X-Dev-Tenant` are sent consistently
-- [x] Provide `api/.env.example` and `frontend/.env.local.example` with correct keys
-- **Acceptance**: `/me` returns role/tenant; UI shows role-aware nav
+**PM Role:**
+- ❌ `/admin/projects` - 403 UNAUTHORIZED_ROLE (PM needs read access for Demand page)
+- ❌ `/admin/resources` - 403 UNAUTHORIZED_ROLE (PM needs read access for Demand page)
+- ❌ `/admin/placeholders` - 403 UNAUTHORIZED_ROLE (PM needs read access for Demand page)
 
-### P0.3 Fix "Failed to fetch" root causes ✅
-- [x] Frontend API client uses correct base URL from `VITE_API_BASE_URL`
-- [x] Backend CORS configured for `http://localhost:5173` (Vite default)
-- [x] CORS allows headers: Authorization, Content-Type, X-Dev-Role, X-Dev-Tenant
-- [x] No HTTPS/HTTP mismatch
-- **Acceptance**: Finance period actions work without network errors
+**RO Role:**
+- ❌ `/admin/resources` - 403 UNAUTHORIZED_ROLE (RO needs read access for Supply page)
 
-### P0.4 Fix dependency traps (pyodbc) ✅
-- [x] Split requirements: `requirements.txt` (SQLite) vs `requirements.azure.txt` (pyodbc)
-- [x] Update README install instructions
-- **Acceptance**: `pip install -r api/requirements.txt` succeeds on Windows
+**Employee Role:**
+- ❌ `/admin/projects` - 403 UNAUTHORIZED_ROLE (Employee needs read access for Actuals page)
+- ❌ `/admin/resources` - 403 UNAUTHORIZED_ROLE (Employee needs read access for Actuals page)
 
-## Phase 1 — Error Handling + Diagnostics (P1) ✅
+**Director Role:**
+- TBD (to be tested)
 
-### P1.1 Improve frontend API client error handling ✅
-- [x] On fetch exceptions: show "Cannot reach API" with guidance
-- [x] On HTTP non-2xx: parse and display status code + Problem Details `code`/`detail`
-- [x] Never show generic "Failed to fetch"
-- [x] Add/verify global toast system
-- **Acceptance**: All errors show actionable messages with status codes
+**Finance Role:**
+- TBD (to be tested)
 
-### P1.2 Standardize server-side Problem Details ✅
-- [x] Backend validation errors use consistent Problem Details format
-- [x] Stable error codes (FTE_INVALID, DEMAND_XOR, PERIOD_LOCKED, etc.)
-- [x] Endpoints return meaningful 400/401/403/409
-- **Acceptance**: UI toasts display these messages properly
+**Root Cause:** Frontend uses `/admin/*` endpoints for read-only lookups, but backend restricts these to Admin + Finance only.
 
-## Phase 2 — Repo Hygiene (P2) ✅
+## Phase 1 — Fix Master Data Read Access
 
-### P2.1 Remove committed build/runtime artifacts ✅
-- [x] Remove `frontend/dist/` from git if tracked
-- [x] Remove `api/dev.db` from git if tracked
-- [x] Remove `frontend/.env.local` from git if tracked
-- [x] Verify `.gitignore` covers all artifacts
-- [x] Update docs: "copy .env.example -> .env locally"
-- **Acceptance**: `git status` shows no build artifacts; `.gitignore` is comprehensive
+### P1.1 Create lookups router
+- [ ] Create `api/app/routers/lookups.py` with GET endpoints:
+  - `/lookups/departments`
+  - `/lookups/cost-centers`
+  - `/lookups/projects`
+  - `/lookups/resources`
+  - `/lookups/placeholders`
+- [ ] All endpoints allow ALL roles (Admin, Finance, PM, RO, Director, Employee)
+- [ ] Filter by tenant_id and return only active records
+- **Acceptance**: All roles can GET /lookups/* endpoints
 
-## Phase 3 — Enterprise Frontend Refresh (P3)
+### P1.2 Register lookups router
+- [ ] Add lookups router to `api/app/main.py`
+- **Acceptance**: Router registered and accessible
 
-### P3.1 Implement/upgrade AppShell
-- [x] Standardize `AppShell.tsx` with left nav (icons + labels)
-- [x] Add top bar with user/tenant and current period selector
-- [x] Use Fluent UI theme tokens (light enterprise look)
-- [x] Add responsive behavior (nav collapses on mobile)
-- **Acceptance**: Clean, modern AppShell with consistent styling
+### P1.3 Create frontend lookups API client
+- [ ] Create `frontend/src/api/lookups.ts`
+- [ ] Implement methods: `listDepartments`, `listCostCenters`, `listProjects`, `listResources`, `listPlaceholders`
+- **Acceptance**: Frontend can call lookups endpoints
 
-### P3.2 Dashboard modernization
-- [x] Role-aware cards: pending actions, current period status
-- [x] Finance publish status (if available)
-- [x] Use Cards + MessageBars + skeleton loading
-- **Acceptance**: Dashboard shows relevant info per role with proper loading states
+### P1.4 Update frontend pages to use lookups
+- [ ] Update `frontend/src/pages/Demand.tsx` to use `lookupsApi.listProjects()`, `lookupsApi.listResources()`, `lookupsApi.listPlaceholders()`
+- [ ] Update `frontend/src/pages/Supply.tsx` to use `lookupsApi.listResources()`
+- [ ] Update `frontend/src/pages/Actuals.tsx` to use `lookupsApi.listProjects()`, `lookupsApi.listResources()`
+- [ ] Keep Admin page using `/admin/*` for CRUD operations
+- **Acceptance**: PM/RO/Employee pages load without 403
 
-### P3.3 Planning pages (Demand/Supply) UX improvements
-- [x] Demand: enforce XOR in UI (resource vs placeholder mutually exclusive)
-- [x] Strong FTE input component (5..100 step 5) with validation
-- [x] Supply: similar FTE input; clear per-month context
-- [x] Read-only mode for Admin/Finance: disable controls, show banner
-- **Acceptance**: Planning pages are intuitive with clear validation feedback
+### P1.5 Add tests for lookups
+- [ ] Test PM can GET /lookups/projects (200)
+- [ ] Test PM can GET /lookups/resources (200)
+- [ ] Test RO can GET /lookups/resources (200)
+- [ ] Test Employee can GET /lookups/projects (200)
+- [ ] Test PM cannot POST /admin/projects (403)
+- **Acceptance**: All tests pass
 
-### P3.4 Actuals page UX improvements
-- [x] Show monthly total and remaining percent prominently
-- [x] Highlight rows contributing to over-100 error based on API payload
-- [x] Proxy-sign UX (RO): explicit reason field, confirmation
-- **Acceptance**: Actuals page clearly shows totals and errors
+## Phase 2 — Fix Approvals Workflow
 
-### P3.5 Approvals page UX improvements
-- [x] Inbox grouping (awaiting my approval)
-- [x] Approve/reject dialog with comment
-- [x] Show step type (RO / Director) and status clearly
-- **Acceptance**: Approvals page is easy to navigate and action
+### P2.1 Verify approval instance creation
+- [x] Ensure `ActualsService.sign()` calls `_ensure_approval_instance()` ✅ (already implemented)
+- [x] Ensure `ActualsService.proxy_sign()` calls `_ensure_approval_instance()` ✅ (already implemented)
+- **Acceptance**: Signing creates approval instance ✅
 
-### P3.6 Consolidation/Periods UX improvements
-- [x] Period actions: confirm dialogs, toasts, refresh
-- [x] Publish action: confirm + success UI
-- [x] Finance experience "ops-friendly" (status banners, timestamps)
-- **Acceptance**: Finance workflows are clear and reliable
+### P2.2 Fix approver resolution
+- [x] RO resolution: use `resource.cost_center.ro_user_id` (db user.id) ✅ (already correct)
+- [x] Director resolution: use department lookup ✅ (already implemented)
+- [x] Ensure consistent use of user.id vs object_id (use user.id for DB relationships) ✅ (approver_id uses user.id)
+- [x] Fix any mismatches in approvals service ✅ (verified)
+- **Acceptance**: Approvers resolve correctly from seeded data ✅
 
-## Phase 4 — Verification (P4)
+### P2.3 Fix inbox filtering
+- [x] RO inbox: filter by `approver_id == current_user.id` for RO step ✅ (already implemented)
+- [x] Director inbox: filter by `approver_id == current_user.id` for Director step ✅ (already implemented)
+- [x] Ensure role guards allow RO and Director to access `/approvals/inbox` ✅ (already correct)
+- **Acceptance**: Inbox shows correct items per role ✅
 
-### P4.1 Add/adjust minimal regression tests (backend)
-- [x] Tests cover: period lock blocks edits, unlock requires reason
-- [x] Tests cover: demand XOR, placeholder 4MFC block
-- [x] Tests cover: actuals <=100 with precise payload
-- [x] Run `pytest` after each backend change
-- **Acceptance**: All critical paths have test coverage
+### P2.4 Add approval tests
+- [x] Test: Employee signs -> approval instance created -> RO inbox shows it ✅ (test_approvals.py exists)
+- [x] Test: RO approve -> Director inbox shows it (unless RO==Director skip) ✅ (test_approvals.py exists)
+- [x] Test: Director approve -> instance status Approved ✅ (test_approvals.py exists)
+- [x] Test: RO==Director skip rule works ✅ (test_approvals.py exists)
+- **Acceptance**: All approval tests pass (tests exist, need to verify)
 
-### P4.2 Update README with "Local Run" section
-- [x] Exact commands for Windows PowerShell and bash
-- [x] Backend run from repo root
-- [x] Frontend env setup
-- [x] How to enable dev bypass
-- [x] Manual verification checklist for all roles
-- **Acceptance**: README enables new developers to run locally successfully
+## Phase 3 — Fix Finance Period Actions
+
+### P3.1 Verify Finance role guards
+- [x] Ensure `/periods` endpoints allow Finance role ✅ (already correct)
+- [x] Ensure `/consolidation` endpoints allow Finance role ✅ (already correct)
+- [x] Check all Finance-required endpoints have correct role guards ✅ (verified)
+- **Acceptance**: Finance can access all required endpoints ✅
+
+### P3.2 Improve unauthorized error messages
+- [x] Update `require_roles` to include required roles in error message ✅ (already implemented in CurrentUser.require_role)
+- [x] Frontend displays: "This action requires one of: Finance, Admin" instead of generic text ✅ (error handling already shows backend message)
+- **Acceptance**: Error messages show required roles ✅
+
+## Phase 4 — End-to-End Verification
+
+### P4.1 Create verification doc
+- [x] Create `docs/VERIFY_LOCAL.md` with step-by-step manual checks ✅
+- [x] Include all critical flows: Finance → PM → RO → Employee → RO → Director → Finance ✅
+- **Acceptance**: Verification doc exists ✅
+
+### P4.2 Add missing tests
+- [x] Test XOR constraint (both resource and placeholder rejected) ✅ (test_planning.py exists)
+- [x] Test 4MFC placeholder block ✅ (test_planning.py exists)
+- [x] Test <=100 actuals enforcement ✅ (test_actuals.py exists)
+- [x] Test period lock blocks mutations ✅ (test_planning.py, test_actuals.py exist)
+- **Acceptance**: All critical rules have test coverage ✅
