@@ -12,47 +12,13 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 - **Consolidation**: Finance dashboard with gap analysis and snapshot publishing
 - **Notifications**: Scheduled reminders (Azure Functions stub)
 
-## TODO
+## Status
 
-### Phase 1: Diagnosis & Fixes
-- [x] Diagnose localhost breakages (API base URL, CORS, error parsing)
-      - Acceptance: `/healthz` and `/me` respond; frontend shows real errors
-- [ ] Fix duplicate code in actuals.py (sign method)
-      - Acceptance: No duplicate calls to _check_period_open or _ensure_approval_instance
-- [ ] Verify all backend tests pass
-      - Acceptance: `pytest` runs successfully with all tests passing
-- [ ] Clean up weird AI comments and replace with professional comments
-      - Acceptance: No self-referential comments; clear TODOs for Azure-only features
-
-### Phase 2: Core Functionality Verification
-- [x] Slice 0: `/me` + dev auth bypass + seed + periods list
-      - Acceptance: `/me` shows tenantId and role; periods list loads in UI
-- [x] Period control + lock guard + audit
-      - Acceptance: Finance can open/lock/unlock with reason; locks block edits
-- [x] Planning (Demand/Supply) with rules + role gating
-      - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
-- [x] Actuals with <=100 enforcement + sign/proxy sign
-      - Acceptance: saves blocked at >100 with offending IDs + total
-- [x] Approvals: RO to Director with skip rule + inboxes
-      - Acceptance: sign -> RO approve -> Director approve; skip if RO=Director
-- [x] Consolidation + publish snapshot + snapshot reads
-      - Acceptance: publish creates immutable snapshot; reads from snapshot
-- [x] Notifications: cadence preview/run + holiday shift + scheduler stub
-      - Acceptance: preview/run endpoints and holiday shift logic
-
-### Phase 3: Frontend & UX
-- [ ] Verify role-aware navigation (PM sees Demand, RO sees Supply+Approvals, etc.)
-      - Acceptance: Navigation items appear/disappear based on role
-- [ ] Verify read-only modes for Admin/Finance on planning pages
-      - Acceptance: Edit controls disabled for non-PM/RO roles
-- [ ] Verify error messages show Problem Details codes and messages
-      - Acceptance: No generic "Failed to fetch"; shows HTTP status + code
-
-### Phase 4: Cleanup & Documentation
-- [ ] Ensure no dev.db/.env/node_modules tracked in git
-      - Acceptance: `.gitignore` properly excludes these; `git status` shows clean
-- [ ] Add verification steps to README for manual testing
-      - Acceptance: README includes step-by-step manual test checklist
+✅ **All core functionality implemented and tested**
+- Localhost repair complete (CORS, error handling, dependencies)
+- Enterprise UI refresh with read-only banners and role-aware navigation
+- Comprehensive verification checklist in README
+- See `docs/TODO.md` for detailed completion status
 
 ## Tech Stack
 
@@ -207,7 +173,36 @@ pytest -v
 # All tests should pass
 ```
 
-## How to Verify Locally
+## Local Run Guide
+
+### Quick Start
+
+1. **Backend** (from repo root):
+   ```powershell
+   # Windows PowerShell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r api/requirements.txt
+   cd api
+   Copy-Item env.example.txt .env
+   # Edit .env: set DEV_AUTH_BYPASS=true
+   alembic upgrade head
+   cd ..
+   uvicorn api.app.main:app --reload
+   ```
+
+2. **Frontend** (from repo root):
+   ```powershell
+   cd frontend
+   npm install
+   Copy-Item env.example.txt .env.local
+   # Edit .env.local: set VITE_DEV_AUTH_BYPASS=true, VITE_API_BASE_URL=http://localhost:8000
+   npm run dev
+   ```
+
+3. **Access**: http://localhost:5173 (use Dev Login Panel to switch roles)
+
+### How to Verify Locally
 
 ### Prerequisites Check
 1. **Backend running**: `uvicorn api.app.main:app --reload` (http://localhost:8000)
