@@ -142,6 +142,30 @@ def test_deadline_calculation(client):
     assert "deadline" in data
 
 
+@pytest.mark.parametrize(
+    "phase,expected",
+    [
+        ("PM_RO", "2026-04-03"),       # 1st Friday
+        ("Finance", "2026-04-17"),     # 3rd Friday
+        ("Employee", "2026-04-27"),    # 4th Monday
+        ("RO_Director", "2026-04-28"), # 4th Tuesday
+    ],
+)
+def test_phase_deadline_calculation(client, phase, expected):
+    """Test phase-based deadline calculation."""
+    headers = {"X-Dev-Role": "Employee", "X-Dev-Tenant": "test-tenant"}
+    
+    response = client.get(
+        f"/notifications/deadline?year=2026&month=4&phase={phase}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["phase"] == phase
+    assert data["deadline"] == expected
+
+
 def test_holiday_roll_forward(client, db):
     """Test that deadline rolls forward when it falls on a holiday."""
     from api.app.models.core import Holiday
@@ -171,6 +195,34 @@ def test_holiday_roll_forward(client, db):
     # Deadline should be rolled forward past the holiday
     deadline = date.fromisoformat(data["deadline"])
     assert deadline > date(2026, 4, 5)
+
+
+def test_phase_holiday_shift(client, db):
+    """Test that phase deadline shifts when it falls on a holiday."""
+    from api.app.models.core import Holiday
+    
+    tenant_id = "test-tenant"
+    
+    # May 1, 2026 is a Friday (PM_RO base date); shift should move to May 4
+    holiday = Holiday(
+        id="holiday-2",
+        tenant_id=tenant_id,
+        name="Holiday on First Friday",
+        date=date(2026, 5, 1),
+    )
+    db.add(holiday)
+    db.commit()
+    
+    headers = {"X-Dev-Role": "Employee", "X-Dev-Tenant": tenant_id}
+    
+    response = client.get(
+        "/notifications/deadline?year=2026&month=5&phase=PM_RO",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["deadline"] == "2026-05-04"
 
 
 def test_get_notification_logs(client, db):

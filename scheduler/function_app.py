@@ -8,7 +8,7 @@ In dev mode, it uses DEV_AUTH_BYPASS headers.
 import os
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, date
 import azure.functions as func
 
 app = func.FunctionApp()
@@ -53,76 +53,67 @@ def call_notification_api(phase: str, year: int, month: int):
         raise
 
 
-# Timer trigger: Run at 8:00 AM on the 1st of each month
-@app.timer_trigger(schedule="0 0 8 1 * *", arg_name="mytimer", run_on_startup=False)
-def notification_pm_ro(mytimer: func.TimerRequest) -> None:
+PHASES = ["PM_RO", "Finance", "Employee", "RO_Director"]
+
+
+def get_phase_deadline(phase: str, year: int, month: int) -> date:
+    """Get the calculated deadline for a phase from the API."""
+    base_url = os.environ.get("API_BASE_URL", "http://localhost:8000")
+    url = f"{base_url}/notifications/deadline"
+
+    params = {
+        "phase": phase,
+        "year": year,
+        "month": month,
+    }
+
+    headers = get_api_headers()
+    response = requests.get(url, params=params, headers=headers, timeout=30)
+    response.raise_for_status()
+    payload = response.json()
+    return date.fromisoformat(payload["deadline"])
+
+
+def get_due_phases(today: date) -> list[str]:
+    """Return phases that should run today based on API-calculated deadlines."""
+    due = []
+    for phase in PHASES:
+        try:
+            deadline = get_phase_deadline(phase, today.year, today.month)
+            if deadline == today:
+                due.append(phase)
+        except Exception as exc:
+            logging.error(f"Failed to evaluate phase {phase}: {exc}")
+    return due
+
+
+# Timer trigger: Run daily at 8:00 AM UTC, then fire phases due today
+@app.timer_trigger(schedule="0 0 8 * * *", arg_name="mytimer", run_on_startup=False)
+def notification_daily(mytimer: func.TimerRequest) -> None:
     """
-    Monthly trigger for PM and RO planning reminders.
-    
-    Runs on the 1st of each month at 8:00 AM.
+    Daily trigger to run phases due today.
+
+    Cadence:
+    - PM_RO: 1st Friday
+    - Finance: 3rd Friday
+    - Employee: 4th Monday
+    - RO_Director: 4th Tuesday
     """
     now = datetime.utcnow()
-    logging.info(f"PM_RO notification timer triggered at {now}")
-    
-    try:
-        result = call_notification_api("PM_RO", now.year, now.month)
-        logging.info(f"PM_RO notifications result: {result}")
-    except Exception as e:
-        logging.error(f"PM_RO notifications failed: {e}")
+    today = now.date()
+    logging.info(f"Notification scheduler triggered at {now} UTC")
 
+    due_phases = get_due_phases(today)
+    if not due_phases:
+        logging.info("No notification phases due today.")
+        return
 
-# Timer trigger: Run at 8:00 AM on the 10th of each month
-@app.timer_trigger(schedule="0 0 8 10 * *", arg_name="mytimer", run_on_startup=False)
-def notification_finance(mytimer: func.TimerRequest) -> None:
-    """
-    Monthly trigger for Finance review reminders.
-    
-    Runs on the 10th of each month at 8:00 AM.
-    """
-    now = datetime.utcnow()
-    logging.info(f"Finance notification timer triggered at {now}")
-    
-    try:
-        result = call_notification_api("Finance", now.year, now.month)
-        logging.info(f"Finance notifications result: {result}")
-    except Exception as e:
-        logging.error(f"Finance notifications failed: {e}")
-
-
-# Timer trigger: Run at 8:00 AM on the 20th of each month
-@app.timer_trigger(schedule="0 0 8 20 * *", arg_name="mytimer", run_on_startup=False)
-def notification_employee(mytimer: func.TimerRequest) -> None:
-    """
-    Monthly trigger for Employee actuals entry reminders.
-    
-    Runs on the 20th of each month at 8:00 AM.
-    """
-    now = datetime.utcnow()
-    logging.info(f"Employee notification timer triggered at {now}")
-    
-    try:
-        result = call_notification_api("Employee", now.year, now.month)
-        logging.info(f"Employee notifications result: {result}")
-    except Exception as e:
-        logging.error(f"Employee notifications failed: {e}")
-
-
-# Timer trigger: Run at 8:00 AM on the 25th of each month
-@app.timer_trigger(schedule="0 0 8 25 * *", arg_name="mytimer", run_on_startup=False)
-def notification_ro_director(mytimer: func.TimerRequest) -> None:
-    """
-    Monthly trigger for RO and Director approval reminders.
-    
-    Runs on the 25th of each month at 8:00 AM.
-    """
-    now = datetime.utcnow()
-    logging.info(f"RO_Director notification timer triggered at {now}")
-    
-    try:
-        result = call_notification_api("RO_Director", now.year, now.month)
-        logging.info(f"RO_Director notifications result: {result}")
-    except Exception as e:
-        logging.error(f"RO_Director notifications failed: {e}")
+    for phase in due_phases:
+        try:
+            result = call_notification_api(phase, today.year, today.month)
+            logging.info(f"{phase} notifications result: {result}")
+        except Exception as e:
+            logging.error(f"{phase} notifications failed: {e}")
 
 
 # HTTP trigger for manual testing

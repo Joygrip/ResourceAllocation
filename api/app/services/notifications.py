@@ -1,6 +1,6 @@
 """Notifications service - sending reminders and tracking."""
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -42,37 +42,19 @@ class NotificationsService:
         if not tenant_id:
             return deadline
         
-        # Get holidays for this month
-        holidays = self.db.query(Holiday).filter(
-            and_(
-                Holiday.tenant_id == tenant_id,
-                Holiday.date >= deadline,
-                Holiday.date <= date(year, month, 28),  # Don't roll past month end
-            )
-        ).all()
-        
-        holiday_dates = {h.date for h in holidays}
-        
-        # Roll forward while deadline is a holiday or weekend
-        max_rolls = 10  # Safety limit
-        rolls = 0
-        while rolls < max_rolls:
-            # Check if weekend (5=Saturday, 6=Sunday)
-            if deadline.weekday() >= 5:
-                deadline = deadline + relativedelta(days=1)
-                rolls += 1
-                continue
-            
-            # Check if holiday
-            if deadline in holiday_dates:
-                deadline = deadline + relativedelta(days=1)
-                rolls += 1
-                continue
-            
-            # Neither weekend nor holiday
-            break
-        
-        return deadline
+        return self._shift_to_next_workday(deadline, tenant_id)
+
+    def calculate_phase_deadline(self, phase: NotificationPhase, year: int, month: int) -> date:
+        """
+        Calculate the scheduled deadline for a notification phase:
+        - PM_RO: 1st Friday
+        - Finance: 3rd Friday
+        - Employee: 4th Monday
+        - RO_Director: 4th Tuesday
+        """
+        base_date = self._get_phase_base_date(phase, year, month)
+        tenant_id = self.current_user.tenant_id if self.current_user else None
+        return self._shift_to_next_workday(base_date, tenant_id)
     
     def get_preview(self, phase: NotificationPhase, year: int, month: int) -> Dict[str, Any]:
         """
@@ -83,7 +65,7 @@ class NotificationsService:
         tenant_id = self.current_user.tenant_id if self.current_user else "unknown"
         
         recipients = self._get_recipients_for_phase(phase)
-        deadline = self.calculate_deadline(year, month)
+        deadline = self.calculate_phase_deadline(phase, year, month)
         
         return {
             "phase": phase.value,
@@ -130,7 +112,7 @@ class NotificationsService:
             }
         
         recipients = self._get_recipients_for_phase(phase)
-        deadline = self.calculate_deadline(year, month)
+        deadline = self.calculate_phase_deadline(phase, year, month)
         message_template = self._get_message_template(phase, year, month, deadline)
         
         notifications_created = []
@@ -204,6 +186,53 @@ class NotificationsService:
                 User.is_active == True,
             )
         ).all()
+
+    def _get_phase_base_date(self, phase: NotificationPhase, year: int, month: int) -> date:
+        """Get the base date for the phase before holiday shifting."""
+        rules = {
+            NotificationPhase.PM_RO: (4, 1),       # 1st Friday
+            NotificationPhase.FINANCE: (4, 3),     # 3rd Friday
+            NotificationPhase.EMPLOYEE: (0, 4),    # 4th Monday
+            NotificationPhase.RO_DIRECTOR: (1, 4), # 4th Tuesday
+        }
+        weekday, nth = rules[phase]
+        return self._nth_weekday_of_month(year, month, weekday, nth)
+
+    def _nth_weekday_of_month(self, year: int, month: int, weekday: int, nth: int) -> date:
+        """Get the date for the nth weekday of the month (weekday: Monday=0)."""
+        first_day = date(year, month, 1)
+        offset = (weekday - first_day.weekday()) % 7
+        first_occurrence = first_day + timedelta(days=offset)
+        return first_occurrence + timedelta(weeks=nth - 1)
+
+    def _shift_to_next_workday(self, base_date: date, tenant_id: Optional[str]) -> date:
+        """Shift a date forward to the next weekday that is not a holiday."""
+        if not tenant_id:
+            return base_date
+
+        # Load holidays for a reasonable window
+        window_start = datetime.combine(base_date, datetime.min.time())
+        window_end = datetime.combine(base_date + timedelta(days=14), datetime.max.time())
+        holidays = self.db.query(Holiday).filter(
+            and_(
+                Holiday.tenant_id == tenant_id,
+                Holiday.date >= window_start,
+                Holiday.date <= window_end,
+            )
+        ).all()
+        holiday_dates = {
+            h.date.date() if isinstance(h.date, datetime) else h.date
+            for h in holidays
+        }
+
+        deadline = base_date
+        for _ in range(14):  # Safety limit
+            if deadline.weekday() >= 5 or deadline in holiday_dates:
+                deadline = deadline + timedelta(days=1)
+                continue
+            break
+
+        return deadline
     
     def _get_message_template(self, phase: NotificationPhase, year: int, month: int, deadline: date) -> str:
         """Get the message template for a notification phase."""

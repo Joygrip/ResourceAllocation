@@ -101,6 +101,7 @@ async def calculate_deadline(
     year: int = Query(..., ge=2020, le=2100),
     month: int = Query(..., ge=1, le=12),
     base_day: int = Query(5, ge=1, le=28),
+    phase: Optional[NotificationPhase] = None,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -110,11 +111,15 @@ async def calculate_deadline(
     Accessible to: All authenticated users
     """
     service = NotificationsService(db, current_user)
-    deadline = service.calculate_deadline(year, month, base_day)
+    if phase:
+        deadline = service.calculate_phase_deadline(phase, year, month)
+    else:
+        deadline = service.calculate_deadline(year, month, base_day)
     
     return {
         "year": year,
         "month": month,
         "base_day": base_day,
+        "phase": phase.value if phase else None,
         "deadline": str(deadline),
     }

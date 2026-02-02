@@ -4,11 +4,11 @@ Azure Functions Timer project for sending periodic notifications.
 
 ## Overview
 
-This scheduler calls the API notification endpoints on a schedule:
-- **PM_RO**: 1st of month - Remind PM and RO to complete planning
-- **Finance**: 10th of month - Remind Finance to review
-- **Employee**: 20th of month - Remind employees to enter actuals  
-- **RO_Director**: 25th of month - Remind approvers to complete approvals
+This scheduler calls the API notification endpoints based on the monthly cadence:
+- **PM_RO**: 1st Friday - Remind PM and RO to complete planning
+- **Finance**: 3rd Friday - Remind Finance to review
+- **Employee**: 4th Monday - Remind employees to enter actuals
+- **RO_Director**: 4th Tuesday - Remind approvers to complete approvals
 
 ## Local Development
 
@@ -35,7 +35,7 @@ In production:
 
 ## Manual Trigger
 
-Use the HTTP trigger endpoint for testing:
+Use the HTTP trigger endpoint for testing a specific phase:
 ```bash
 curl -X POST "http://localhost:7071/api/trigger?phase=PM_RO&year=2026&month=2"
 ```
