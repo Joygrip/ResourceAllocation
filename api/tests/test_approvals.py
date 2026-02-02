@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 def test_inbox_requires_role(client):
-    """Test that inbox requires approver role (RO/Director/Admin)."""
+    """Test that inbox requires approver role (RO/Director)."""
     # Without auth headers in dev mode, defaults to Employee which can't approve
     response = client.get("/approvals/inbox")
     assert response.status_code == 403
@@ -30,8 +30,6 @@ def test_approval_not_found(client):
 def test_full_approval_workflow(client, db):
     """Test complete approval workflow: sign → RO approve → Director approve."""
     from api.app.models.core import User, Department, CostCenter, Resource, Period, Project
-    from api.app.models.actuals import ActualLine
-    from api.app.models.approvals import ApprovalInstance, ApprovalStep, ApprovalStatus, StepStatus
     
     tenant_id = "test-tenant"
     
@@ -110,60 +108,25 @@ def test_full_approval_workflow(client, db):
         pm_user_id=None,
     )
     db.add(project)
-    
-    # Create actual line that's signed
-    actual = ActualLine(
-        id="actual-1",
-        tenant_id=tenant_id,
-        period_id="period-1",
-        resource_id="res-1",
-        project_id="proj-1",
-        year=2026,
-        month=2,
-        planned_fte_percent=50,
-        actual_fte_percent=50,
-        employee_signed_at=datetime.utcnow(),
-        employee_signed_by="employee-user-1",
-        created_by="employee-user-1",
-    )
-    db.add(actual)
-    
-    # Create approval instance
-    instance = ApprovalInstance(
-        id="approval-1",
-        tenant_id=tenant_id,
-        subject_type="actuals",
-        subject_id="actual-1",
-        status=ApprovalStatus.PENDING,
-        created_by="employee-user-1",
-    )
-    db.add(instance)
-    db.flush()
-    
-    # Create RO step (pending)
-    ro_step = ApprovalStep(
-        id="step-1",
-        instance_id="approval-1",
-        step_order=1,
-        step_name="RO",
-        approver_id="ro-user-1",
-        status=StepStatus.PENDING,
-    )
-    db.add(ro_step)
-    
-    # Create Director step (pending)
-    director_step = ApprovalStep(
-        id="step-2",
-        instance_id="approval-1",
-        step_order=2,
-        step_name="Director",
-        approver_id="director-user-1",
-        status=StepStatus.PENDING,
-    )
-    db.add(director_step)
-    
     db.commit()
     
+    # Create and sign actuals as employee (triggers approval instance)
+    employee_headers = {"X-Dev-Role": "Employee", "X-Dev-Tenant": tenant_id, "X-Dev-User-Id": "employee-oid"}
+    create_resp = client.post(
+        "/actuals",
+        json={
+            "resource_id": "res-1",
+            "project_id": "proj-1",
+            "year": 2026,
+            "month": 2,
+            "actual_fte_percent": 50,
+        },
+        headers=employee_headers,
+    )
+    actual_id = create_resp.json()["id"]
+    sign_resp = client.post(f"/actuals/{actual_id}/sign", headers=employee_headers)
+    assert sign_resp.status_code == 200
+
     # RO user should see approval in inbox
     ro_headers = {"X-Dev-Role": "RO", "X-Dev-Tenant": tenant_id, "X-Dev-User-Id": "ro-oid"}
     
@@ -171,12 +134,14 @@ def test_full_approval_workflow(client, db):
     assert response.status_code == 200
     inbox = response.json()
     assert len(inbox) == 1
-    assert inbox[0]["id"] == "approval-1"
+    approval_id = inbox[0]["id"]
     assert inbox[0]["status"] == "pending"
+    ro_step = next(step for step in inbox[0]["steps"] if step["step_name"] == "RO")
+    director_step = next(step for step in inbox[0]["steps"] if step["step_name"] == "Director")
     
     # RO approves step 1
     response = client.post(
-        "/approvals/approval-1/steps/step-1/approve",
+        f"/approvals/{approval_id}/steps/{ro_step['id']}/approve",
         json={"comment": "Looks good"},
         headers=ro_headers,
     )
@@ -188,7 +153,7 @@ def test_full_approval_workflow(client, db):
     director_headers = {"X-Dev-Role": "Director", "X-Dev-Tenant": tenant_id, "X-Dev-User-Id": "director-oid"}
     
     response = client.post(
-        "/approvals/approval-1/steps/step-2/approve",
+        f"/approvals/{approval_id}/steps/{director_step['id']}/approve",
         json={"comment": "Approved by Director"},
         headers=director_headers,
     )
@@ -200,8 +165,6 @@ def test_full_approval_workflow(client, db):
 def test_skip_director_when_ro_equals_director(client, db):
     """Test that Director step is skipped when RO is also the Director."""
     from api.app.models.core import User, Department, CostCenter, Resource, Period, Project
-    from api.app.models.actuals import ActualLine
-    from api.app.models.approvals import ApprovalInstance, ApprovalStep, ApprovalStatus, StepStatus
     
     tenant_id = "test-tenant"
     
@@ -236,48 +199,72 @@ def test_skip_director_when_ro_equals_director(client, db):
         ro_user_id="ro-director-user",
     )
     db.add(cost_center)
-    
-    # Create approval instance with Director step skipped
-    instance = ApprovalInstance(
-        id="approval-2",
+
+    # Create resource
+    resource = Resource(
+        id="res-2",
         tenant_id=tenant_id,
-        subject_type="actuals",
-        subject_id="actual-2",
-        status=ApprovalStatus.PENDING,
-        created_by="employee",
+        display_name="Test Resource 2",
+        email="resource2@test.com",
+        user_id="employee-user-2",
+        cost_center_id="cc-2",
+        employee_id="EMP002",
     )
-    db.add(instance)
-    db.flush()
-    
-    # RO step
-    ro_step = ApprovalStep(
-        id="step-3",
-        instance_id="approval-2",
-        step_order=1,
-        step_name="RO",
-        approver_id="ro-director-user",
-        status=StepStatus.PENDING,
+    db.add(resource)
+
+    # Create period
+    period = Period(
+        id="period-2",
+        tenant_id=tenant_id,
+        year=2026,
+        month=2,
+        status="open",
     )
-    db.add(ro_step)
-    
-    # Director step - SKIPPED because RO == Director
-    director_step = ApprovalStep(
-        id="step-4",
-        instance_id="approval-2",
-        step_order=2,
-        step_name="Director",
-        approver_id="ro-director-user",
-        status=StepStatus.SKIPPED,
+    db.add(period)
+
+    # Create project
+    project = Project(
+        id="proj-2",
+        tenant_id=tenant_id,
+        name="Test Project 2",
+        code="TP2",
+        pm_user_id=None,
     )
-    db.add(director_step)
+    db.add(project)
     
     db.commit()
     
+    # Create and sign actuals as employee (triggers approval instance)
+    employee_headers = {"X-Dev-Role": "Employee", "X-Dev-Tenant": tenant_id, "X-Dev-User-Id": "employee-oid"}
+    create_resp = client.post(
+        "/actuals",
+        json={
+            "resource_id": "res-2",
+            "project_id": "proj-2",
+            "year": 2026,
+            "month": 2,
+            "actual_fte_percent": 50,
+        },
+        headers=employee_headers,
+    )
+    actual_id = create_resp.json()["id"]
+    sign_resp = client.post(f"/actuals/{actual_id}/sign", headers=employee_headers)
+    assert sign_resp.status_code == 200
+
     # When RO approves, the whole instance should be approved (Director skipped)
     headers = {"X-Dev-Role": "Director", "X-Dev-Tenant": tenant_id, "X-Dev-User-Id": "ro-director-oid"}
     
+    inbox_resp = client.get("/approvals/inbox", headers=headers)
+    assert inbox_resp.status_code == 200
+    inbox = inbox_resp.json()
+    assert len(inbox) == 1
+    approval_id = inbox[0]["id"]
+    ro_step = next(step for step in inbox[0]["steps"] if step["step_name"] == "RO")
+    director_step = next(step for step in inbox[0]["steps"] if step["step_name"] == "Director")
+    assert director_step["status"] == "skipped"
+
     response = client.post(
-        "/approvals/approval-2/steps/step-3/approve",
+        f"/approvals/{approval_id}/steps/{ro_step['id']}/approve",
         json={"comment": "RO+Director approval"},
         headers=headers,
     )

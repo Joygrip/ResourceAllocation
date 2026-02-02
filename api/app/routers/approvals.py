@@ -67,13 +67,13 @@ def _to_response(instance) -> ApprovalInstanceResponse:
 async def get_inbox(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.RO, UserRole.DIRECTOR
+        UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """
     Get approval instances awaiting current user's action.
     
-    Accessible to: Admin, RO, Director
+    Accessible to: RO, Director
     """
     service = ApprovalsService(db, current_user)
     instances = service.get_inbox()
@@ -84,7 +84,9 @@ async def get_inbox(
 async def get_approval(
     instance_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles(
+        UserRole.RO, UserRole.DIRECTOR
+    )),
 ):
     """Get a specific approval instance."""
     service = ApprovalsService(db, current_user)
@@ -102,13 +104,13 @@ async def approve_step(
     data: ActionRequest,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.RO, UserRole.DIRECTOR
+        UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """
     Approve a step.
     
-    Accessible to: Admin, RO, Director
+    Accessible to: RO, Director
     """
     service = ApprovalsService(db, current_user)
     instance = service.approve_step(instance_id, step_id, data.comment)
@@ -122,13 +124,13 @@ async def reject_step(
     data: ActionRequest,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.RO, UserRole.DIRECTOR
+        UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """
     Reject a step.
     
-    Accessible to: Admin, RO, Director
+    Accessible to: RO, Director
     """
     service = ApprovalsService(db, current_user)
     instance = service.reject_step(instance_id, step_id, data.comment)

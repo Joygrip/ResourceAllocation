@@ -110,22 +110,13 @@ class ApprovalsService:
     
     def get_inbox(self) -> List[ApprovalInstance]:
         """Get approval instances awaiting current user's action."""
-        # Find pending steps where current user is the approver
-        # or where approver_id is null (anyone can approve)
-        
         # Get current user's User record
-        user = self.db.query(User).filter(
-            and_(
-                User.tenant_id == self.current_user.tenant_id,
-                User.object_id == self.current_user.object_id,
-            )
-        ).first()
-        
+        user = self._get_user()
         if not user:
             return []
         
         # Find instances with pending steps for this user
-        pending_instances = []
+        pending_instances: List[ApprovalInstance] = []
         
         instances = self.db.query(ApprovalInstance).filter(
             and_(
@@ -142,10 +133,8 @@ class ApprovalsService:
                     current_step = step
                     break
             
-            if current_step:
-                # Check if this user can approve
-                if current_step.approver_id is None or current_step.approver_id == user.id:
-                    pending_instances.append(instance)
+            if current_step and self._can_user_action_step(user, current_step):
+                pending_instances.append(instance)
         
         return pending_instances
     
@@ -178,6 +167,20 @@ class ApprovalsService:
             raise HTTPException(
                 status_code=400,
                 detail={"code": "VALIDATION_ERROR", "message": "Step is not pending"}
+            )
+
+        user = self._get_user()
+        if not user or not self._can_user_action_step(user, step):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "UNAUTHORIZED_ROLE", "message": "You are not allowed to approve this step"},
+            )
+
+        current_step = self._get_current_step(instance)
+        if not current_step or current_step.id != step.id:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Only the current step can be approved"},
             )
         
         # Update step
@@ -239,6 +242,20 @@ class ApprovalsService:
                 status_code=400,
                 detail={"code": "VALIDATION_ERROR", "message": "Step is not pending"}
             )
+
+        user = self._get_user()
+        if not user or not self._can_user_action_step(user, step):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "UNAUTHORIZED_ROLE", "message": "You are not allowed to reject this step"},
+            )
+
+        current_step = self._get_current_step(instance)
+        if not current_step or current_step.id != step.id:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Only the current step can be rejected"},
+            )
         
         # Update step
         step.status = StepStatus.REJECTED
@@ -272,3 +289,32 @@ class ApprovalsService:
         )
         
         return instance
+
+    def _get_user(self) -> Optional[User]:
+        """Get the current user's User record."""
+        return self.db.query(User).filter(
+            and_(
+                User.tenant_id == self.current_user.tenant_id,
+                User.object_id == self.current_user.object_id,
+            )
+        ).first()
+
+    def _get_current_step(self, instance: ApprovalInstance) -> Optional[ApprovalStep]:
+        """Get the first pending step in order."""
+        for step in sorted(instance.steps, key=lambda s: s.step_order):
+            if step.status == StepStatus.PENDING:
+                return step
+        return None
+
+    def _can_user_action_step(self, user: User, step: ApprovalStep) -> bool:
+        """Check if the user can act on the given step."""
+        if step.approver_id:
+            return step.approver_id == user.id
+
+        # If no explicit approver, require role match
+        if step.step_name == "RO":
+            return user.role == "RO"
+        if step.step_name == "Director":
+            return user.role == "Director"
+
+        return False

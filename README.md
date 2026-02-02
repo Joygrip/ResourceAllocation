@@ -19,7 +19,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 - [x] Period control: lock/unlock with reason, audit, lock guard
 - [x] Planning: Demand/Supply rules (XOR, 4MFC, FTE) + role gating
 - [x] Actuals: ≤100% enforcement + sign/proxy sign + lock guard
-- [ ] Approvals: RO → Director with skip rule, inboxes, audit
+- [x] Approvals: RO → Director with skip rule, inboxes, audit
 - [ ] Consolidation: dashboard + publish snapshots + snapshot reads
 - [ ] Notifications: cadence preview/run + holiday shift + scheduler stub
 - [ ] Remove build artifacts and AI comments; refresh README verify steps
