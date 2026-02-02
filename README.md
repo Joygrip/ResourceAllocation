@@ -14,8 +14,17 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 
 ## TODO
 
+### Phase 1: Diagnosis & Fixes
 - [x] Diagnose localhost breakages (API base URL, CORS, error parsing)
       - Acceptance: `/healthz` and `/me` respond; frontend shows real errors
+- [ ] Fix duplicate code in actuals.py (sign method)
+      - Acceptance: No duplicate calls to _check_period_open or _ensure_approval_instance
+- [ ] Verify all backend tests pass
+      - Acceptance: `pytest` runs successfully with all tests passing
+- [ ] Clean up weird AI comments and replace with professional comments
+      - Acceptance: No self-referential comments; clear TODOs for Azure-only features
+
+### Phase 2: Core Functionality Verification
 - [x] Slice 0: `/me` + dev auth bypass + seed + periods list
       - Acceptance: `/me` shows tenantId and role; periods list loads in UI
 - [x] Period control + lock guard + audit
@@ -30,8 +39,20 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: publish creates immutable snapshot; reads from snapshot
 - [x] Notifications: cadence preview/run + holiday shift + scheduler stub
       - Acceptance: preview/run endpoints and holiday shift logic
-- [ ] Clean up AI comments and remove committed artifacts
-      - Acceptance: no dev.db/.env/node_modules tracked; README verify steps
+
+### Phase 3: Frontend & UX
+- [ ] Verify role-aware navigation (PM sees Demand, RO sees Supply+Approvals, etc.)
+      - Acceptance: Navigation items appear/disappear based on role
+- [ ] Verify read-only modes for Admin/Finance on planning pages
+      - Acceptance: Edit controls disabled for non-PM/RO roles
+- [ ] Verify error messages show Problem Details codes and messages
+      - Acceptance: No generic "Failed to fetch"; shows HTTP status + code
+
+### Phase 4: Cleanup & Documentation
+- [ ] Ensure no dev.db/.env/node_modules tracked in git
+      - Acceptance: `.gitignore` properly excludes these; `git status` shows clean
+- [ ] Add verification steps to README for manual testing
+      - Acceptance: README includes step-by-step manual test checklist
 
 ## Tech Stack
 
@@ -135,8 +156,88 @@ ResourceAllocation/
 cd api
 pytest -v
 
-# All 77 tests should pass
+# All tests should pass
 ```
+
+## How to Verify Locally
+
+### Prerequisites Check
+1. **Backend running**: `uvicorn api.app.main:app --reload` (http://localhost:8000)
+2. **Frontend running**: `npm run dev` in `frontend/` (http://localhost:5173)
+3. **Dev auth bypass enabled**: Set `DEV_AUTH_BYPASS=true` in both `.env` files
+4. **Database seeded**: Call `/dev/seed` endpoint or use seed button in UI
+
+### Manual Test Checklist
+
+#### 1. Finance Role - Period Control
+- [ ] Login as Finance (use Dev Login Panel)
+- [ ] Navigate to Consolidation page
+- [ ] Create a new period (year/month)
+- [ ] Lock the period (requires reason)
+- [ ] Verify period status shows "locked"
+- [ ] Try to unlock/reopen (requires reason)
+- [ ] Verify period status changes back to "open"
+
+#### 2. PM Role - Demand Planning
+- [ ] Login as PM
+- [ ] Verify navigation shows: Dashboard, Demand (no Supply visible)
+- [ ] Navigate to Demand page
+- [ ] Create demand line with resource (FTE 5-100, step 5)
+- [ ] Verify XOR: try to select both resource and placeholder → error
+- [ ] Verify 4MFC: try placeholder in current month → blocked
+- [ ] Create demand with placeholder for month 6+ months away → allowed
+- [ ] Verify Finance/Admin see Demand in read-only mode (no edit buttons)
+
+#### 3. RO Role - Supply Planning
+- [ ] Login as RO
+- [ ] Verify navigation shows: Dashboard, Demand, Supply, Actuals, Approvals
+- [ ] Navigate to Supply page
+- [ ] Create supply line (FTE 5-100, step 5)
+- [ ] Verify Finance/Admin see Supply in read-only mode
+
+#### 4. Employee Role - Actuals Entry
+- [ ] Login as Employee
+- [ ] Navigate to Actuals page
+- [ ] Create actual line (project + resource + FTE)
+- [ ] Create second line for same resource/month with total >100% → blocked with error showing total and offending IDs
+- [ ] Create lines totaling exactly 100% → allowed
+- [ ] Sign actuals → creates approval instance
+
+#### 5. RO Role - Proxy Sign & Approvals
+- [ ] Login as RO
+- [ ] Navigate to Actuals page
+- [ ] Find unsigned actuals for employee
+- [ ] Proxy sign with reason → creates approval instance
+- [ ] Navigate to Approvals page
+- [ ] Verify approval instance appears in inbox
+- [ ] Approve Step 1 (RO) → status remains "pending" (Director step pending)
+- [ ] Verify approval shows both RO and Director steps
+
+#### 6. Director Role - Approvals
+- [ ] Login as Director
+- [ ] Navigate to Approvals page
+- [ ] Verify approval from Step 5 appears in inbox
+- [ ] Approve Step 2 (Director) → status changes to "approved"
+- [ ] Test skip rule: if RO==Director, verify Director step is skipped and RO approval completes workflow
+
+#### 7. Finance Role - Consolidation & Publish
+- [ ] Login as Finance
+- [ ] Navigate to Consolidation page
+- [ ] View dashboard showing demand vs supply gaps
+- [ ] Publish snapshot → creates immutable snapshot
+- [ ] Verify snapshot lines remain stable (read-only)
+
+#### 8. Error Handling
+- [ ] Test invalid FTE (e.g., 42) → shows FTE_INVALID error
+- [ ] Test locked period edit → shows PERIOD_LOCKED error
+- [ ] Test unauthorized role action → shows UNAUTHORIZED_ROLE error
+- [ ] Verify all errors show Problem Details format (code + message), not generic "Failed to fetch"
+
+#### 9. Multi-tenancy
+- [ ] Login as user in tenant-001
+- [ ] Create data (demand, supply, actuals)
+- [ ] Switch to tenant-002 (via Dev Login)
+- [ ] Verify no data from tenant-001 is visible
 
 ## API Documentation
 

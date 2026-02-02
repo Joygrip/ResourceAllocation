@@ -44,8 +44,8 @@ class ApprovalsService:
         
         if resource.cost_center:
             ro_user_id = resource.cost_center.ro_user_id
-            # TODO: Get Director from department or manager chain
-            # For now, we'll use a simple lookup
+            # Get Director from department (simplified lookup)
+            # TODO: In production, use Azure Graph API manager chain for accurate Director resolution
             if resource.cost_center.department:
                 # Find Director user in this department (simplified)
                 director = self.db.query(User).filter(

@@ -166,7 +166,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/demand', label: 'Demand', icon: Demand, roles: ['Admin', 'Finance', 'PM', 'RO'] },
-  { path: '/supply', label: 'Supply', icon: Supply, roles: ['Admin', 'Finance', 'PM', 'RO'] },
+  { path: '/supply', label: 'Supply', icon: Supply, roles: ['Admin', 'Finance', 'RO'] }, // PM cannot edit Supply
   { path: '/actuals', label: 'Actuals', icon: Actuals, roles: ['Admin', 'Finance', 'RO', 'Employee'] },
   { path: '/approvals', label: 'Approvals', icon: Approvals, roles: ['Admin', 'RO', 'Director'] },
   { path: '/consolidation', label: 'Consolidation', icon: Consolidation, roles: ['Admin', 'Finance', 'Director'] },

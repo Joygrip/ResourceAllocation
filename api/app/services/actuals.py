@@ -374,9 +374,6 @@ class ActualsService:
 
         # Check period is open
         self._check_period_open(actual.year, actual.month)
-
-        # Check period is open
-        self._check_period_open(actual.year, actual.month)
         
         actual.employee_signed_at = datetime.utcnow()
         actual.employee_signed_by = self.current_user.object_id
@@ -384,8 +381,6 @@ class ActualsService:
         
         self.db.commit()
         self.db.refresh(actual)
-
-        self._ensure_approval_instance(actual)
 
         self._ensure_approval_instance(actual)
         
@@ -433,6 +428,8 @@ class ActualsService:
         
         self.db.commit()
         self.db.refresh(actual)
+
+        self._ensure_approval_instance(actual)
         
         log_audit(
             self.db, self.current_user,
