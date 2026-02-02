@@ -38,6 +38,7 @@ import { planningApi, SupplyLine, CreateSupplyLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { adminApi, Resource } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
@@ -124,8 +125,7 @@ export const Supply: React.FC = () => {
         setSelectedPeriod(openPeriod?.id || periodsData[0].id);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load data';
-      setError(message);
+      setError(formatApiError(err, 'Failed to load data'));
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ export const Supply: React.FC = () => {
       const data = await planningApi.getSupplyLines(selectedPeriod);
       setSupplies(data);
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to load supply lines');
     }
   };
   
@@ -167,7 +167,7 @@ export const Supply: React.FC = () => {
         fte_percent: 100,
       });
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to create supply line');
     }
   };
   
@@ -179,7 +179,7 @@ export const Supply: React.FC = () => {
       showSuccess('Supply line deleted');
       loadSupplies();
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to delete supply line');
     }
   };
   

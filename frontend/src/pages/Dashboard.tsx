@@ -148,7 +148,7 @@ export function Dashboard() {
       const result = await apiClient.seedDatabase();
       showSuccess('Database Seeded', result.message);
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to seed database');
     } finally {
       setSeeding(false);
     }

@@ -45,6 +45,7 @@ import { consolidationApi, ConsolidationDashboard, Snapshot } from '../api/conso
 import { periodsApi, Period } from '../api/periods';
 import { PeriodPanel } from '../components/PeriodPanel';
 import { useToast } from '../hooks/useToast';
+import { formatApiError } from '../utils/errors';
 
 const useStyles = makeStyles({
   container: {
@@ -131,8 +132,7 @@ export const Consolidation: React.FC = () => {
         setSelectedPeriod(openPeriod?.id || data[0].id);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load periods';
-      setError(message);
+      setError(formatApiError(err, 'Failed to load periods'));
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export const Consolidation: React.FC = () => {
       const data = await consolidationApi.getDashboard(selectedPeriod);
       setDashboard(data);
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to load dashboard');
     }
   };
   
@@ -152,7 +152,7 @@ export const Consolidation: React.FC = () => {
       const data = await consolidationApi.getSnapshots(selectedPeriod);
       setSnapshots(data);
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to load snapshots');
     }
   };
   
@@ -170,7 +170,7 @@ export const Consolidation: React.FC = () => {
       setPublishDescription('');
       loadSnapshots();
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to publish snapshot');
     }
   };
   

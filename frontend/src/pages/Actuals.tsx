@@ -45,6 +45,7 @@ import { actualsApi, ActualLine, CreateActualLine } from '../api/actuals';
 import { periodsApi, Period } from '../api/periods';
 import { adminApi, Project, Resource } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { formatApiError } from '../utils/errors';
 import { ApiError } from '../types';
 
 const useStyles = makeStyles({
@@ -150,8 +151,7 @@ export const Actuals: React.FC = () => {
         setSelectedPeriod(openPeriod?.id || periodsData[0].id);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load data';
-      setError(message);
+      setError(formatApiError(err, 'Failed to load data'));
     } finally {
       setLoading(false);
     }
@@ -163,7 +163,7 @@ export const Actuals: React.FC = () => {
       setActuals(data);
       setOverLimitIds([]);
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to load actuals');
     }
   };
   
@@ -194,7 +194,7 @@ export const Actuals: React.FC = () => {
           setOverLimitIds(offending.filter((id): id is string => typeof id === 'string'));
         }
       }
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to create actual line');
     }
   };
   
@@ -206,7 +206,7 @@ export const Actuals: React.FC = () => {
       showSuccess('Actual line deleted');
       loadActuals();
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to delete actual line');
     }
   };
   
@@ -232,7 +232,7 @@ export const Actuals: React.FC = () => {
       setIsProxySign(false);
       loadActuals();
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to sign actuals');
     }
   };
   

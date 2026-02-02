@@ -95,7 +95,7 @@ export function PeriodPanel() {
       const data = await periodsApi.list();
       setPeriods(data);
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to load periods');
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ export function PeriodPanel() {
       showSuccess('Period Locked', `${monthNames[period.month - 1]} ${period.year} has been locked.`);
       loadPeriods();
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to lock period');
     } finally {
       setActionLoading(null);
     }
@@ -131,7 +131,7 @@ export function PeriodPanel() {
       showSuccess('Period Unlocked', `${monthNames[selectedPeriod.month - 1]} ${selectedPeriod.year} has been unlocked.`);
       loadPeriods();
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to unlock period');
     } finally {
       setActionLoading(null);
       setSelectedPeriod(null);
@@ -147,7 +147,7 @@ export function PeriodPanel() {
       showSuccess('Period Created', `${monthNames[newPeriodMonth - 1]} ${newPeriodYear} has been created.`);
       loadPeriods();
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to create period');
     } finally {
       setActionLoading(null);
     }

@@ -14,15 +14,24 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 
 ## TODO
 
-- [x] Diagnose localhost breakages (API base URL, CORS, proxy, error parsing)
-- [x] Verify Slice 0: `/me`, dev auth bypass, seed, periods list
-- [x] Period control: lock/unlock with reason, audit, lock guard
-- [x] Planning: Demand/Supply rules (XOR, 4MFC, FTE) + role gating
-- [x] Actuals: ≤100% enforcement + sign/proxy sign + lock guard
-- [x] Approvals: RO → Director with skip rule, inboxes, audit
-- [x] Consolidation: dashboard + publish snapshots + snapshot reads
+- [x] Diagnose localhost breakages (API base URL, CORS, error parsing)
+      - Acceptance: `/healthz` and `/me` respond; frontend shows real errors
+- [ ] Slice 0: `/me` + dev auth bypass + seed + periods list
+      - Acceptance: `/me` shows tenantId and role; periods list loads in UI
+- [ ] Period control + lock guard + audit
+      - Acceptance: Finance can open/lock/unlock with reason; locks block edits
+- [ ] Planning (Demand/Supply) with rules + role gating
+      - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
+- [ ] Actuals with <=100 enforcement + sign/proxy sign
+      - Acceptance: saves blocked at >100 with offending IDs + total
+- [ ] Approvals: RO to Director with skip rule + inboxes
+      - Acceptance: sign -> RO approve -> Director approve; skip if RO=Director
+- [ ] Consolidation + publish snapshot + snapshot reads
+      - Acceptance: publish creates immutable snapshot; reads from snapshot
 - [ ] Notifications: cadence preview/run + holiday shift + scheduler stub
-- [ ] Remove build artifacts and AI comments; refresh README verify steps
+      - Acceptance: preview/run endpoints and holiday shift logic
+- [ ] Clean up AI comments and remove committed artifacts
+      - Acceptance: no dev.db/.env/node_modules tracked; README verify steps
 
 ## Tech Stack
 

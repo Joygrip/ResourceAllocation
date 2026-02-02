@@ -130,7 +130,7 @@ export function Admin() {
           break;
       }
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to load admin data');
     } finally {
       setLoading(false);
     }
@@ -210,7 +210,7 @@ export function Admin() {
       setDialogOpen(false);
       loadData();
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to save');
     }
   };
   
@@ -245,7 +245,7 @@ export function Admin() {
       showSuccess('Deleted', 'Item deleted successfully');
       loadData();
     } catch (error) {
-      showApiError(error as Error);
+      showApiError(error as Error, 'Failed to delete');
     }
   };
   

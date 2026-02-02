@@ -12,13 +12,14 @@ import {
   useId,
 } from '@fluentui/react-components';
 import { ApiError } from '../types';
+import { getApiErrorDetail, getApiErrorTitle } from '../utils/errors';
 
 interface ToastContextType {
   showSuccess: (title: string, message?: string) => void;
   showError: (title: string, message?: string) => void;
   showWarning: (title: string, message?: string) => void;
   showInfo: (title: string, message?: string) => void;
-  showApiError: (error: ApiError | Error) => void;
+  showApiError: (error: ApiError | Error, context?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -26,16 +27,6 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const toasterId = useId('toaster');
   const { dispatchToast } = useToastController(toasterId);
-
-  const codeMessages: Record<string, string> = {
-    FTE_INVALID: 'FTE must be between 5 and 100 in steps of 5.',
-    DEMAND_XOR: 'Demand must include either a resource or a placeholder (not both).',
-    PLACEHOLDER_BLOCKED_4MFC: 'Placeholders are not allowed within the rolling 4-month forecast window.',
-    ACTUALS_OVER_100: 'Total actuals exceed 100% for this resource.',
-    PERIOD_LOCKED: 'Period is locked. Edits are not allowed.',
-    UNAUTHORIZED_ROLE: 'You do not have permission to perform this action.',
-    VALIDATION_ERROR: 'Validation error. Please check your input.',
-  };
 
   const showToast = useCallback(
     (intent: ToastIntent, title: string, message?: string) => {
@@ -71,20 +62,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const showApiError = useCallback(
-    (error: ApiError | Error) => {
+    (error: ApiError | Error, context?: string) => {
       if (error instanceof ApiError) {
-        let detail = codeMessages[error.code] || error.detail || error.message;
-        if (error.code === 'ACTUALS_OVER_100') {
-          const total = error.extras?.total_percent;
-          if (typeof total === 'number') {
-            detail = `${detail} Total: ${total}%`;
-          }
-        }
-        const title = `HTTP ${error.status} (${error.code})`;
-        showError(title, detail);
-      } else {
-        showError('Error', error.message || 'An unexpected error occurred');
+        const title = context || getApiErrorTitle(error);
+        const detail = getApiErrorDetail(error);
+        const message = context
+          ? `${getApiErrorTitle(error)}: ${detail}`
+          : detail;
+        showError(title, message);
+        return;
       }
+      const fallbackTitle = context || 'Error';
+      const fallbackMessage = error.message || 'An unexpected error occurred';
+      showError(fallbackTitle, fallbackMessage);
     },
     [showError]
   );

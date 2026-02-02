@@ -38,6 +38,7 @@ import {
 } from '@fluentui/react-icons';
 import { approvalsApi, ApprovalInstance, ApprovalStep } from '../api/approvals';
 import { useToast } from '../hooks/useToast';
+import { formatApiError } from '../utils/errors';
 
 const useStyles = makeStyles({
   container: {
@@ -146,8 +147,7 @@ export const Approvals: React.FC = () => {
       const data = await approvalsApi.getInbox();
       setApprovals(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load approvals';
-      setError(message);
+      setError(formatApiError(err, 'Failed to load approvals'));
     } finally {
       setLoading(false);
     }
@@ -176,7 +176,7 @@ export const Approvals: React.FC = () => {
       setIsDialogOpen(false);
       loadApprovals();
     } catch (err: unknown) {
-      showApiError(err as Error);
+      showApiError(err as Error, 'Failed to update approval');
     }
   };
   
