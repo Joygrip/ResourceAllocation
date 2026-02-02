@@ -28,7 +28,7 @@ def test_locked_period_blocks_write_endpoint(client, finance_headers, db):
         headers=finance_headers,
     )
     assert double_lock_resp.status_code == 400
-    assert "already locked" in double_lock_resp.json()["detail"]["message"].lower()
+    assert "already locked" in double_lock_resp.json()["detail"].lower()
 
 
 def test_unlocked_period_allows_edits(client, finance_headers, db):

@@ -95,7 +95,7 @@ const useStyles = makeStyles({
 
 export const Consolidation: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showApiError } = useToast();
   
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
@@ -143,8 +143,7 @@ export const Consolidation: React.FC = () => {
       const data = await consolidationApi.getDashboard(selectedPeriod);
       setDashboard(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to load dashboard', message);
+      showApiError(err as Error);
     }
   };
   
@@ -153,8 +152,7 @@ export const Consolidation: React.FC = () => {
       const data = await consolidationApi.getSnapshots(selectedPeriod);
       setSnapshots(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to load snapshots', message);
+      showApiError(err as Error);
     }
   };
   
@@ -172,8 +170,7 @@ export const Consolidation: React.FC = () => {
       setPublishDescription('');
       loadSnapshots();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to publish', message);
+      showApiError(err as Error);
     }
   };
   

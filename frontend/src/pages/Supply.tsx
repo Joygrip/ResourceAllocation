@@ -77,7 +77,7 @@ const useStyles = makeStyles({
 
 export const Supply: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showApiError } = useToast();
   
   const [supplies, setSupplies] = useState<SupplyLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -134,8 +134,7 @@ export const Supply: React.FC = () => {
       const data = await planningApi.getSupplyLines(selectedPeriod);
       setSupplies(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to load supply lines', message);
+      showApiError(err as Error);
     }
   };
   
@@ -158,8 +157,7 @@ export const Supply: React.FC = () => {
         fte_percent: 100,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to create', message);
+      showApiError(err as Error);
     }
   };
   
@@ -171,8 +169,7 @@ export const Supply: React.FC = () => {
       showSuccess('Supply line deleted');
       loadSupplies();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to delete', message);
+      showApiError(err as Error);
     }
   };
   

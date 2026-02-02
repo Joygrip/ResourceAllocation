@@ -77,7 +77,7 @@ const useStyles = makeStyles({
 
 export const Demand: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showApiError } = useToast();
   
   const [demands, setDemands] = useState<DemandLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -141,8 +141,7 @@ export const Demand: React.FC = () => {
       const data = await planningApi.getDemandLines(selectedPeriod);
       setDemands(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to load demand lines', message);
+      showApiError(err as Error);
     }
   };
   
@@ -174,8 +173,7 @@ export const Demand: React.FC = () => {
         fte_percent: 50,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to create', message);
+      showApiError(err as Error);
     }
   };
   
@@ -187,8 +185,7 @@ export const Demand: React.FC = () => {
       showSuccess('Demand line deleted');
       loadDemands();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to delete', message);
+      showApiError(err as Error);
     }
   };
   

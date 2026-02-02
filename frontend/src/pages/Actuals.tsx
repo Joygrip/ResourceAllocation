@@ -90,7 +90,7 @@ const useStyles = makeStyles({
 
 export const Actuals: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showApiError } = useToast();
   
   const [actuals, setActuals] = useState<ActualLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -157,8 +157,7 @@ export const Actuals: React.FC = () => {
       const data = await actualsApi.getActualLines(selectedPeriod);
       setActuals(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to load actuals', message);
+      showApiError(err as Error);
     }
   };
   
@@ -183,8 +182,7 @@ export const Actuals: React.FC = () => {
         actual_fte_percent: 50,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to create', message);
+      showApiError(err as Error);
     }
   };
   
@@ -196,8 +194,7 @@ export const Actuals: React.FC = () => {
       showSuccess('Actual line deleted');
       loadActuals();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to delete', message);
+      showApiError(err as Error);
     }
   };
   
@@ -223,8 +220,7 @@ export const Actuals: React.FC = () => {
       setIsProxySign(false);
       loadActuals();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed to sign', message);
+      showApiError(err as Error);
     }
   };
   

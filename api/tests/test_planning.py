@@ -138,7 +138,7 @@ def test_xor_blocks_neither_id(client, pm_headers, setup_planning_data):
         headers=pm_headers,
     )
     assert response.status_code == 400
-    assert response.json()["detail"]["code"] == "DEMAND_XOR"
+    assert response.json()["code"] == "DEMAND_XOR"
 
 
 def test_placeholder_blocked_in_4mfc(client, pm_headers, setup_planning_data):
@@ -156,7 +156,7 @@ def test_placeholder_blocked_in_4mfc(client, pm_headers, setup_planning_data):
         headers=pm_headers,
     )
     assert response.status_code == 400
-    assert response.json()["detail"]["code"] == "PLACEHOLDER_BLOCKED_4MFC"
+    assert response.json()["code"] == "PLACEHOLDER_BLOCKED_4MFC"
 
 
 def test_placeholder_allowed_outside_4mfc(client, pm_headers, setup_planning_data):
@@ -258,7 +258,7 @@ def test_locked_period_blocks_demand(client, pm_headers, finance_headers, setup_
         headers=pm_headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "PERIOD_LOCKED"
+    assert response.json()["code"] == "PERIOD_LOCKED"
 
 
 # ============== SUPPLY LINE TESTS ==============
@@ -325,7 +325,7 @@ def test_locked_period_blocks_supply(client, ro_headers, finance_headers, setup_
         headers=ro_headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "PERIOD_LOCKED"
+    assert response.json()["code"] == "PERIOD_LOCKED"
 
 
 def test_pm_cannot_create_supply(client, pm_headers, setup_planning_data):

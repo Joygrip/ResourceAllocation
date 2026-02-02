@@ -116,9 +116,9 @@ def test_actuals_over_100_blocked(client, employee_headers, setup_actuals_data):
     )
     assert response.status_code == 400
     result = response.json()
-    assert result["detail"]["code"] == "ACTUALS_OVER_100"
-    assert result["detail"]["total_percent"] == 110
-    assert "offending_line_ids" in result["detail"]
+    assert result["code"] == "ACTUALS_OVER_100"
+    assert result["total_percent"] == 110
+    assert "offending_line_ids" in result
 
 
 def test_actuals_exactly_100_allowed(client, employee_headers, setup_actuals_data):
@@ -262,7 +262,7 @@ def test_cannot_edit_signed_actuals(client, employee_headers, setup_actuals_data
         headers=employee_headers,
     )
     assert response.status_code == 400
-    assert "signed" in response.json()["detail"]["message"].lower()
+    assert "signed" in response.json()["detail"].lower()
 
 
 def test_locked_period_blocks_actuals(client, employee_headers, finance_headers, setup_actuals_data):
@@ -292,7 +292,7 @@ def test_locked_period_blocks_actuals(client, employee_headers, finance_headers,
         headers=employee_headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "PERIOD_LOCKED"
+    assert response.json()["code"] == "PERIOD_LOCKED"
 
 
 def test_get_resource_monthly_total(client, employee_headers, setup_actuals_data):

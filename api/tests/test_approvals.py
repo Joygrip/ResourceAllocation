@@ -398,7 +398,7 @@ def test_cannot_approve_already_actioned_step(client, db):
         headers=headers,
     )
     assert response.status_code == 400
-    assert response.json()["detail"]["code"] == "VALIDATION_ERROR"
+    assert response.json()["code"] == "VALIDATION_ERROR"
 
 
 def test_employee_cannot_access_inbox(client):

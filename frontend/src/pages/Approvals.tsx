@@ -123,7 +123,7 @@ const getStepClass = (styles: ReturnType<typeof useStyles>, status: string) => {
 
 export const Approvals: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showError, showWarning } = useToast();
+  const { showSuccess, showApiError, showWarning } = useToast();
   
   const [approvals, setApprovals] = useState<ApprovalInstance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,8 +176,7 @@ export const Approvals: React.FC = () => {
       setIsDialogOpen(false);
       loadApprovals();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      showError('Failed', message);
+      showApiError(err as Error);
     }
   };
   

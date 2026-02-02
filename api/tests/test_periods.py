@@ -24,7 +24,7 @@ def test_create_period_as_employee_forbidden(client, employee_headers, db):
         headers=employee_headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "UNAUTHORIZED_ROLE"
+    assert response.json()["code"] == "UNAUTHORIZED_ROLE"
 
 
 def test_lock_period(client, finance_headers, db):
@@ -66,7 +66,7 @@ def test_unlock_requires_reason(client, finance_headers, db):
         headers=finance_headers,
     )
     assert unlock_resp.status_code == 400
-    assert "required" in unlock_resp.json()["detail"]["message"].lower()
+    assert "required" in unlock_resp.json()["detail"].lower()
 
 
 def test_unlock_with_reason(client, finance_headers, db):

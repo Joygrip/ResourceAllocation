@@ -51,21 +51,36 @@ export interface ProblemDetail {
     message: string;
     type: string;
   }>;
+  [key: string]: unknown;
 }
 
 // API Error
 export class ApiError extends Error {
+  title: string;
   status: number;
   code: string;
   detail?: string;
   errors?: ProblemDetail['errors'];
+  extras: Record<string, unknown>;
 
   constructor(problem: ProblemDetail) {
     super(problem.title);
+    this.title = problem.title;
     this.status = problem.status;
     this.code = problem.code;
     this.detail = problem.detail;
     this.errors = problem.errors;
+    const {
+      type,
+      title,
+      status,
+      detail,
+      code,
+      errors,
+      instance,
+      ...extras
+    } = problem;
+    this.extras = extras;
   }
 }
 

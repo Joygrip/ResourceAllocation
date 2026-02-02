@@ -73,6 +73,6 @@ export const actualsApi = {
   },
   
   async proxySignActuals(actualId: string, reason: string): Promise<ActualLine> {
-    return apiClient.post<ActualLine>(`/actuals/${actualId}/sign?proxy=true`, { reason });
+    return apiClient.post<ActualLine>(`/actuals/${actualId}/proxy-sign`, { reason });
   },
 };

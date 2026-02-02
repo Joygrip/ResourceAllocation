@@ -12,6 +12,18 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 - **Consolidation**: Finance dashboard with gap analysis and snapshot publishing
 - **Notifications**: Scheduled reminders (Azure Functions stub)
 
+## TODO
+
+- [x] Diagnose localhost breakages (API base URL, CORS, proxy, error parsing)
+- [ ] Verify Slice 0: `/me`, dev auth bypass, seed, periods list
+- [ ] Period control: lock/unlock with reason, audit, lock guard
+- [ ] Planning: Demand/Supply rules (XOR, 4MFC, FTE) + role gating
+- [ ] Actuals: ≤100% enforcement + sign/proxy sign + lock guard
+- [ ] Approvals: RO → Director with skip rule, inboxes, audit
+- [ ] Consolidation: dashboard + publish snapshots + snapshot reads
+- [ ] Notifications: cadence preview/run + holiday shift + scheduler stub
+- [ ] Remove build artifacts and AI comments; refresh README verify steps
+
 ## Tech Stack
 
 ### Backend

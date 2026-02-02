@@ -1,5 +1,6 @@
 """FastAPI Application - Resource Allocation API."""
-from fastapi import FastAPI, Request, status
+from http import HTTPStatus
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -52,6 +53,50 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "code": "VALIDATION_ERROR",
             "errors": errors,
         },
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Convert HTTPException to Problem Details format."""
+    detail = exc.detail
+
+    # If already in Problem Details format, pass through
+    if isinstance(detail, dict) and {"title", "status", "code"}.issubset(detail.keys()):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=detail,
+            headers=exc.headers,
+        )
+
+    title = "HTTP Error"
+    try:
+        title = HTTPStatus(exc.status_code).phrase
+    except ValueError:
+        pass
+
+    if isinstance(detail, dict):
+        code = detail.get("code", "HTTP_ERROR")
+        message = detail.get("message") or detail.get("detail") or title
+        extras = {k: v for k, v in detail.items() if k not in {"code", "message", "detail"}}
+    else:
+        code = "HTTP_ERROR"
+        message = str(detail) if detail else title
+        extras = {}
+
+    problem = {
+        "type": "about:blank",
+        "title": title,
+        "status": exc.status_code,
+        "detail": message,
+        "code": code,
+        **extras,
+    }
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=problem,
+        headers=exc.headers,
     )
 
 
