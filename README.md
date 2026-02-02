@@ -22,7 +22,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: Finance can open/lock/unlock with reason; locks block edits
 - [x] Planning (Demand/Supply) with rules + role gating
       - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
-- [ ] Actuals with <=100 enforcement + sign/proxy sign
+- [x] Actuals with <=100 enforcement + sign/proxy sign
       - Acceptance: saves blocked at >100 with offending IDs + total
 - [ ] Approvals: RO to Director with skip rule + inboxes
       - Acceptance: sign -> RO approve -> Director approve; skip if RO=Director
