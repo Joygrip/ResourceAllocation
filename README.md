@@ -26,7 +26,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: saves blocked at >100 with offending IDs + total
 - [x] Approvals: RO to Director with skip rule + inboxes
       - Acceptance: sign -> RO approve -> Director approve; skip if RO=Director
-- [ ] Consolidation + publish snapshot + snapshot reads
+- [x] Consolidation + publish snapshot + snapshot reads
       - Acceptance: publish creates immutable snapshot; reads from snapshot
 - [ ] Notifications: cadence preview/run + holiday shift + scheduler stub
       - Acceptance: preview/run endpoints and holiday shift logic
