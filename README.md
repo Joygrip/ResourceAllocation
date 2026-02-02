@@ -16,7 +16,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 
 - [x] Diagnose localhost breakages (API base URL, CORS, proxy, error parsing)
 - [x] Verify Slice 0: `/me`, dev auth bypass, seed, periods list
-- [ ] Period control: lock/unlock with reason, audit, lock guard
+- [x] Period control: lock/unlock with reason, audit, lock guard
 - [ ] Planning: Demand/Supply rules (XOR, 4MFC, FTE) + role gating
 - [ ] Actuals: ≤100% enforcement + sign/proxy sign + lock guard
 - [ ] Approvals: RO → Director with skip rule, inboxes, audit
