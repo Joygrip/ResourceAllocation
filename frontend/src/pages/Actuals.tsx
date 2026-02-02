@@ -45,6 +45,7 @@ import { actualsApi, ActualLine, CreateActualLine } from '../api/actuals';
 import { periodsApi, Period } from '../api/periods';
 import { adminApi, Project, Resource } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { ApiError } from '../types';
 
 const useStyles = makeStyles({
   container: {
@@ -86,6 +87,9 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     marginBottom: tokens.spacingVerticalM,
   },
+  overLimitRow: {
+    backgroundColor: tokens.colorPaletteRedBackground1,
+  },
 });
 
 export const Actuals: React.FC = () => {
@@ -99,6 +103,7 @@ export const Actuals: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overLimitIds, setOverLimitIds] = useState<string[]>([]);
   
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -156,6 +161,7 @@ export const Actuals: React.FC = () => {
     try {
       const data = await actualsApi.getActualLines(selectedPeriod);
       setActuals(data);
+      setOverLimitIds([]);
     } catch (err: unknown) {
       showApiError(err as Error);
     }
@@ -182,6 +188,12 @@ export const Actuals: React.FC = () => {
         actual_fte_percent: 50,
       });
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'ACTUALS_OVER_100') {
+        const offending = err.extras?.offending_line_ids;
+        if (Array.isArray(offending)) {
+          setOverLimitIds(offending.filter((id): id is string => typeof id === 'string'));
+        }
+      }
       showApiError(err as Error);
     }
   };
@@ -433,7 +445,10 @@ export const Actuals: React.FC = () => {
               </TableRow>
             ) : (
               actuals.map(a => (
-                <TableRow key={a.id}>
+                <TableRow
+                  key={a.id}
+                  className={overLimitIds.includes(a.id) ? styles.overLimitRow : undefined}
+                >
                   <TableCell>{getResourceName(a.resource_id)}</TableCell>
                   <TableCell>{getProjectName(a.project_id)}</TableCell>
                   <TableCell>{a.year}-{String(a.month).padStart(2, '0')}</TableCell>

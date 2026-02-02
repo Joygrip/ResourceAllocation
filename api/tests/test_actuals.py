@@ -295,6 +295,40 @@ def test_locked_period_blocks_actuals(client, employee_headers, finance_headers,
     assert response.json()["code"] == "PERIOD_LOCKED"
 
 
+def test_locked_period_blocks_sign(client, employee_headers, finance_headers, setup_actuals_data):
+    """Locked period blocks signing actuals."""
+    data = setup_actuals_data
+
+    # Create actual while open
+    create_resp = client.post(
+        "/actuals",
+        json={
+            "resource_id": data["resource_id"],
+            "project_id": data["project1_id"],
+            "year": data["year"],
+            "month": data["month"],
+            "actual_fte_percent": 50,
+        },
+        headers=employee_headers,
+    )
+    actual_id = create_resp.json()["id"]
+
+    # Lock the period
+    periods_resp = client.get("/periods", headers=finance_headers)
+    period = next(
+        (p for p in periods_resp.json()
+         if p["year"] == data["year"] and p["month"] == data["month"]),
+        None
+    )
+    assert period is not None
+    client.post(f"/periods/{period['id']}/lock", headers=finance_headers)
+
+    # Try to sign
+    sign_resp = client.post(f"/actuals/{actual_id}/sign", headers=employee_headers)
+    assert sign_resp.status_code == 403
+    assert sign_resp.json()["code"] == "PERIOD_LOCKED"
+
+
 def test_get_resource_monthly_total(client, employee_headers, setup_actuals_data):
     """Get total FTE for a resource in a month."""
     data = setup_actuals_data

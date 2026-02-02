@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
 from api.app.models.actuals import ActualLine
+from api.app.models.approvals import ApprovalInstance
 from api.app.models.core import Period, Project, Resource, PeriodStatus, User, UserRole
 from api.app.auth.dependencies import CurrentUser
 from api.app.services.audit import log_audit
@@ -370,6 +371,12 @@ class ActualsService:
                     "message": "Actuals already signed",
                 }
             )
+
+        # Check period is open
+        self._check_period_open(actual.year, actual.month)
+
+        # Check period is open
+        self._check_period_open(actual.year, actual.month)
         
         actual.employee_signed_at = datetime.utcnow()
         actual.employee_signed_by = self.current_user.object_id
@@ -377,6 +384,10 @@ class ActualsService:
         
         self.db.commit()
         self.db.refresh(actual)
+
+        self._ensure_approval_instance(actual)
+
+        self._ensure_approval_instance(actual)
         
         log_audit(
             self.db, self.current_user,
@@ -436,6 +447,22 @@ class ActualsService:
         )
         
         return actual
+
+    def _ensure_approval_instance(self, actual: ActualLine) -> None:
+        """Create an approval instance if one does not already exist."""
+        existing = self.db.query(ApprovalInstance).filter(
+            and_(
+                ApprovalInstance.tenant_id == self.current_user.tenant_id,
+                ApprovalInstance.subject_type == "actuals",
+                ApprovalInstance.subject_id == actual.id,
+            )
+        ).first()
+        if existing:
+            return
+
+        from api.app.services.approvals import ApprovalsService
+
+        ApprovalsService(self.db, self.current_user).create_approval_for_actuals(actual)
     
     def get_resource_monthly_total(self, resource_id: str, year: int, month: int) -> int:
         """Get total FTE for a resource in a given month."""
