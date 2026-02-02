@@ -18,7 +18,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: `/healthz` and `/me` respond; frontend shows real errors
 - [x] Slice 0: `/me` + dev auth bypass + seed + periods list
       - Acceptance: `/me` shows tenantId and role; periods list loads in UI
-- [ ] Period control + lock guard + audit
+- [x] Period control + lock guard + audit
       - Acceptance: Finance can open/lock/unlock with reason; locks block edits
 - [ ] Planning (Demand/Supply) with rules + role gating
       - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
