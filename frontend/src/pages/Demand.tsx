@@ -40,6 +40,7 @@ import { adminApi, Project, Resource, Placeholder } from '../api/admin';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
+import { ReadOnlyBanner } from '../components/ReadOnlyBanner';
 
 const useStyles = makeStyles({
   container: {
@@ -214,6 +215,7 @@ export const Demand: React.FC = () => {
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
   const canEdit = user?.role === 'PM';
+  const isReadOnly = !canEdit && (user?.role === 'Admin' || user?.role === 'Finance');
   
   if (loading) {
     return (
@@ -364,6 +366,10 @@ export const Demand: React.FC = () => {
         <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
           <MessageBarBody>Period is locked. Editing is disabled.</MessageBarBody>
         </MessageBar>
+      )}
+      
+      {isReadOnly && !isLocked && (
+        <ReadOnlyBanner message="Only PMs can edit demand lines. You can view all demand data." />
       )}
       
       {error && (

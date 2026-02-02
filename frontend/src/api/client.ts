@@ -68,51 +68,117 @@ class ApiClient {
   }
 
   async get<T>(path: string): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'GET',
-      headers,
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'GET',
+        headers,
+      });
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      // Network error or fetch failed
+      throw new ApiError({
+        type: 'about:blank',
+        title: 'Network Error',
+        status: 0,
+        detail: `Cannot reach API at ${this.baseUrl}. Check that the backend is running and CORS is configured correctly.`,
+        code: 'NETWORK_ERROR',
+      });
+    }
   }
 
   async post<T>(path: string, data?: unknown): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
-      headers,
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        headers,
+        body: data ? JSON.stringify(data) : undefined,
+      });
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError({
+        type: 'about:blank',
+        title: 'Network Error',
+        status: 0,
+        detail: `Cannot reach API at ${this.baseUrl}. Check that the backend is running and CORS is configured correctly.`,
+        code: 'NETWORK_ERROR',
+      });
+    }
   }
 
   async put<T>(path: string, data: unknown): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError({
+        type: 'about:blank',
+        title: 'Network Error',
+        status: 0,
+        detail: `Cannot reach API at ${this.baseUrl}. Check that the backend is running and CORS is configured correctly.`,
+        code: 'NETWORK_ERROR',
+      });
+    }
   }
 
   async patch<T>(path: string, data: unknown): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(data),
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError({
+        type: 'about:blank',
+        title: 'Network Error',
+        status: 0,
+        detail: `Cannot reach API at ${this.baseUrl}. Check that the backend is running and CORS is configured correctly.`,
+        code: 'NETWORK_ERROR',
+      });
+    }
   }
 
   async delete<T>(path: string): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return this.handleResponse<T>(response);
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'DELETE',
+        headers,
+      });
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError({
+        type: 'about:blank',
+        title: 'Network Error',
+        status: 0,
+        detail: `Cannot reach API at ${this.baseUrl}. Check that the backend is running and CORS is configured correctly.`,
+        code: 'NETWORK_ERROR',
+      });
+    }
   }
 
   // Typed API methods

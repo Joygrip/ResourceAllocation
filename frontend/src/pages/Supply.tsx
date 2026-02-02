@@ -40,6 +40,7 @@ import { adminApi, Resource } from '../api/admin';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
+import { ReadOnlyBanner } from '../components/ReadOnlyBanner';
 
 const useStyles = makeStyles({
   container: {
@@ -188,6 +189,7 @@ export const Supply: React.FC = () => {
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
   const canEdit = user?.role === 'RO';
+  const isReadOnly = !canEdit && (user?.role === 'Admin' || user?.role === 'Finance' || user?.role === 'PM');
   
   if (loading) {
     return (

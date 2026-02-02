@@ -10,8 +10,8 @@ python-jose[cryptography]>=3.3.0
 # Database
 sqlalchemy>=2.0.0,<3.0.0
 alembic>=1.13.0,<2.0.0
-pyodbc>=5.0.0  # For Azure SQL
-aiosqlite>=0.19.0  # For SQLite async
+aiosqlite>=0.19.0  # For SQLite async (local dev)
+# Note: pyodbc is in requirements.azure.txt for Azure SQL production
 
 # Utilities
 pydantic>=2.0.0,<3.0.0

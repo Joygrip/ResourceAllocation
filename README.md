@@ -81,19 +81,19 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
 
 ### Backend Setup
 
-```bash
+**Windows PowerShell:**
+```powershell
 # Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+.\venv\Scripts\Activate.ps1
 
-# Install dependencies
-cd api
-pip install -r requirements.txt
+# Install dependencies (from repo root)
+pip install -r api/requirements.txt
 
 # Set up environment
-cp env.example.txt .env
-# Edit .env with your settings
+cd api
+Copy-Item env.example.txt .env
+# Edit .env with your settings (set DEV_AUTH_BYPASS=true for local dev)
 
 # Run migrations
 alembic upgrade head
@@ -101,12 +101,58 @@ alembic upgrade head
 # Run tests
 pytest
 
-# Start server
+# Start server (from repo root)
+cd ..
 uvicorn api.app.main:app --reload
 ```
 
+**Linux/Mac (bash):**
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install dependencies (from repo root)
+pip install -r api/requirements.txt
+
+# Set up environment
+cd api
+cp env.example.txt .env
+# Edit .env with your settings (set DEV_AUTH_BYPASS=true for local dev)
+
+# Run migrations
+alembic upgrade head
+
+# Run tests
+pytest
+
+# Start server (from repo root)
+cd ..
+uvicorn api.app.main:app --reload
+```
+
+**Note:** The backend must be run from the repo root so that `api.app.main` imports work correctly. If you need to run from the `api/` directory, set `PYTHONPATH=..` first.
+
 ### Frontend Setup
 
+**Windows PowerShell:**
+```powershell
+cd frontend
+
+# Install dependencies
+npm install
+
+# Set up environment
+Copy-Item env.example.txt .env.local
+# Edit .env.local with your settings:
+#   VITE_DEV_AUTH_BYPASS=true
+#   VITE_API_BASE_URL=http://localhost:8000
+
+# Start dev server
+npm run dev
+```
+
+**Linux/Mac (bash):**
 ```bash
 cd frontend
 
@@ -115,7 +161,9 @@ npm install
 
 # Set up environment
 cp env.example.txt .env.local
-# Edit .env.local with your settings
+# Edit .env.local with your settings:
+#   VITE_DEV_AUTH_BYPASS=true
+#   VITE_API_BASE_URL=http://localhost:8000
 
 # Start dev server
 npm run dev
