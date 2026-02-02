@@ -24,7 +24,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
 - [x] Actuals with <=100 enforcement + sign/proxy sign
       - Acceptance: saves blocked at >100 with offending IDs + total
-- [ ] Approvals: RO to Director with skip rule + inboxes
+- [x] Approvals: RO to Director with skip rule + inboxes
       - Acceptance: sign -> RO approve -> Director approve; skip if RO=Director
 - [ ] Consolidation + publish snapshot + snapshot reads
       - Acceptance: publish creates immutable snapshot; reads from snapshot
