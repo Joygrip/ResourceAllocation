@@ -1,0 +1,3 @@
+{
+  "tests/test_approvals.py::test_inbox_requires_auth": true
+}

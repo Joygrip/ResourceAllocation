@@ -1,0 +1,132 @@
+/**
+ * API client with authentication and error handling.
+ */
+import { config } from '../config';
+import { ApiError, DevAuthState, MeResponse, HealthResponse, ProblemDetail } from '../types';
+
+class ApiClient {
+  private baseUrl: string;
+  private devAuth: DevAuthState | null = null;
+  private tokenGetter: (() => Promise<string | null>) | null = null;
+
+  constructor() {
+    this.baseUrl = config.apiBaseUrl;
+  }
+
+  setDevAuth(auth: DevAuthState | null) {
+    this.devAuth = auth;
+  }
+
+  setTokenGetter(getter: () => Promise<string | null>) {
+    this.tokenGetter = getter;
+  }
+
+  private async getHeaders(): Promise<HeadersInit> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (config.devAuthBypass && this.devAuth) {
+      // Dev mode headers
+      headers['X-Dev-Role'] = this.devAuth.role;
+      headers['X-Dev-Tenant'] = this.devAuth.tenantId;
+      headers['X-Dev-User-Id'] = this.devAuth.userId;
+      headers['X-Dev-Email'] = this.devAuth.email;
+      headers['X-Dev-Name'] = this.devAuth.displayName;
+    } else if (this.tokenGetter) {
+      // Real auth token
+      const token = await this.tokenGetter();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
+  }
+
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      let problem: ProblemDetail;
+      
+      try {
+        problem = await response.json();
+      } catch {
+        // If response isn't valid JSON, create a generic error
+        problem = {
+          type: 'about:blank',
+          title: `HTTP ${response.status}`,
+          status: response.status,
+          detail: response.statusText,
+          code: 'HTTP_ERROR',
+        };
+      }
+
+      throw new ApiError(problem);
+    }
+
+    return response.json();
+  }
+
+  async get<T>(path: string): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'GET',
+      headers,
+    });
+    return this.handleResponse<T>(response);
+  }
+
+  async post<T>(path: string, data?: unknown): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    return this.handleResponse<T>(response);
+  }
+
+  async put<T>(path: string, data: unknown): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse<T>(response);
+  }
+
+  async patch<T>(path: string, data: unknown): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse<T>(response);
+  }
+
+  async delete<T>(path: string): Promise<T> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return this.handleResponse<T>(response);
+  }
+
+  // Typed API methods
+  async getMe(): Promise<MeResponse> {
+    return this.get<MeResponse>('/me');
+  }
+
+  async getHealth(): Promise<HealthResponse> {
+    return this.get<HealthResponse>('/healthz');
+  }
+
+  async seedDatabase(): Promise<{ message: string }> {
+    return this.post<{ message: string }>('/dev/seed');
+  }
+}
+
+export const apiClient = new ApiClient();
