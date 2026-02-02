@@ -22,8 +22,10 @@ from api.app.services.audit import log_audit
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# Allowed roles for read access
+# Allowed roles for read access (master data)
 READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
+# Allowed roles for read access to planning-related data (projects, resources, placeholders)
+PLANNING_READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO)
 # Allowed roles for write access
 WRITE_ROLES = (UserRole.ADMIN,)
 
@@ -209,9 +211,9 @@ async def delete_cost_center(
 @router.get("/projects", response_model=list[ProjectResponse])
 async def list_projects(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """List all projects."""
+    """List all projects. Accessible to Admin, Finance, PM, RO."""
     return db.query(Project).filter(
         Project.tenant_id == current_user.tenant_id
     ).all()
@@ -221,9 +223,9 @@ async def list_projects(
 async def get_project(
     project_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """Get a project by ID."""
+    """Get a project by ID. Accessible to Admin, Finance, PM, RO."""
     project = db.query(Project).filter(
         and_(Project.id == project_id, Project.tenant_id == current_user.tenant_id)
     ).first()
@@ -297,9 +299,9 @@ async def delete_project(
 @router.get("/resources", response_model=list[ResourceResponse])
 async def list_resources(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """List all resources."""
+    """List all resources. Accessible to Admin, Finance, PM, RO."""
     return db.query(Resource).filter(
         Resource.tenant_id == current_user.tenant_id
     ).all()
@@ -309,9 +311,9 @@ async def list_resources(
 async def get_resource(
     resource_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """Get a resource by ID."""
+    """Get a resource by ID. Accessible to Admin, Finance, PM, RO."""
     resource = db.query(Resource).filter(
         and_(Resource.id == resource_id, Resource.tenant_id == current_user.tenant_id)
     ).first()
@@ -385,9 +387,9 @@ async def delete_resource(
 @router.get("/placeholders", response_model=list[PlaceholderResponse])
 async def list_placeholders(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """List all placeholders."""
+    """List all placeholders. Accessible to Admin, Finance, PM, RO."""
     return db.query(Placeholder).filter(
         Placeholder.tenant_id == current_user.tenant_id
     ).all()
@@ -397,9 +399,9 @@ async def list_placeholders(
 async def get_placeholder(
     placeholder_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*READ_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """Get a placeholder by ID."""
+    """Get a placeholder by ID. Accessible to Admin, Finance, PM, RO."""
     placeholder = db.query(Placeholder).filter(
         and_(Placeholder.id == placeholder_id, Placeholder.tenant_id == current_user.tenant_id)
     ).first()
