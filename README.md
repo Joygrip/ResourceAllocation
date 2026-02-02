@@ -20,7 +20,7 @@ Multi-tenant resource allocation and planning system built with FastAPI and Reac
       - Acceptance: `/me` shows tenantId and role; periods list loads in UI
 - [x] Period control + lock guard + audit
       - Acceptance: Finance can open/lock/unlock with reason; locks block edits
-- [ ] Planning (Demand/Supply) with rules + role gating
+- [x] Planning (Demand/Supply) with rules + role gating
       - Acceptance: XOR enforced, 4MFC placeholder rule, FTE step/range
 - [ ] Actuals with <=100 enforcement + sign/proxy sign
       - Acceptance: saves blocked at >100 with offending IDs + total
