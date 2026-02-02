@@ -38,6 +38,7 @@ import { planningApi, DemandLine, CreateDemandLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { adminApi, Project, Resource, Placeholder } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
   container: {
@@ -77,7 +78,8 @@ const useStyles = makeStyles({
 
 export const Demand: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showApiError } = useToast();
+  const { showSuccess, showApiError, showError } = useToast();
+  const { user } = useAuth();
   
   const [demands, setDemands] = useState<DemandLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -146,6 +148,22 @@ export const Demand: React.FC = () => {
   };
   
   const handleCreate = async () => {
+    if (!canEdit) {
+      showError('Read-only', 'Only PMs can edit demand lines.');
+      return;
+    }
+    if (!formData.project_id) {
+      showError('Missing project', 'Please select a project.');
+      return;
+    }
+    if (useResource && !formData.resource_id) {
+      showError('Missing resource', 'Please select a resource.');
+      return;
+    }
+    if (!useResource && !formData.placeholder_id) {
+      showError('Missing placeholder', 'Please select a placeholder.');
+      return;
+    }
     try {
       const data: CreateDemandLine = {
         ...formData,
@@ -195,6 +213,7 @@ export const Demand: React.FC = () => {
   
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
+  const canEdit = user?.role === 'PM';
   
   if (loading) {
     return (
@@ -224,7 +243,7 @@ export const Demand: React.FC = () => {
             ))}
           </Select>
           
-          {!isLocked && (
+          {!isLocked && canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
               <DialogTrigger>
                 <Button appearance="primary" icon={<Add24Regular />}>
@@ -252,7 +271,15 @@ export const Demand: React.FC = () => {
                       <label>Assignment Type</label>
                       <Select
                         value={useResource ? 'resource' : 'placeholder'}
-                        onChange={(_, data) => setUseResource(data.value === 'resource')}
+                        onChange={(_, data) => {
+                          const nextUseResource = data.value === 'resource';
+                          setUseResource(nextUseResource);
+                          setFormData((prev) => ({
+                            ...prev,
+                            resource_id: nextUseResource ? prev.resource_id : '',
+                            placeholder_id: nextUseResource ? '' : prev.placeholder_id,
+                          }));
+                        }}
                       >
                         <option value="resource">Named Resource</option>
                         <option value="placeholder">Placeholder (TBD)</option>
@@ -383,7 +410,7 @@ export const Demand: React.FC = () => {
                     <Badge appearance="filled" color="informative">{d.fte_percent}%</Badge>
                   </TableCell>
                   <TableCell>
-                    {!isLocked && (
+                    {!isLocked && canEdit && (
                       <Button
                         icon={<Delete24Regular />}
                         appearance="subtle"

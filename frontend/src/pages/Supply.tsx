@@ -38,6 +38,7 @@ import { planningApi, SupplyLine, CreateSupplyLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { adminApi, Resource } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
   container: {
@@ -77,7 +78,8 @@ const useStyles = makeStyles({
 
 export const Supply: React.FC = () => {
   const styles = useStyles();
-  const { showSuccess, showApiError } = useToast();
+  const { showSuccess, showApiError, showError } = useToast();
+  const { user } = useAuth();
   
   const [supplies, setSupplies] = useState<SupplyLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -139,6 +141,14 @@ export const Supply: React.FC = () => {
   };
   
   const handleCreate = async () => {
+    if (!canEdit) {
+      showError('Read-only', 'Only ROs can edit supply lines.');
+      return;
+    }
+    if (!formData.resource_id) {
+      showError('Missing resource', 'Please select a resource.');
+      return;
+    }
     try {
       await planningApi.createSupplyLine({
         ...formData,
@@ -177,6 +187,7 @@ export const Supply: React.FC = () => {
   
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
+  const canEdit = user?.role === 'RO';
   
   if (loading) {
     return (
@@ -206,7 +217,7 @@ export const Supply: React.FC = () => {
             ))}
           </Select>
           
-          {!isLocked && (
+          {!isLocked && canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
               <DialogTrigger>
                 <Button appearance="primary" icon={<Add24Regular />}>
@@ -317,7 +328,7 @@ export const Supply: React.FC = () => {
                     <Badge appearance="filled" color="success">{s.fte_percent}%</Badge>
                   </TableCell>
                   <TableCell>
-                    {!isLocked && (
+                    {!isLocked && canEdit && (
                       <Button
                         icon={<Delete24Regular />}
                         appearance="subtle"
