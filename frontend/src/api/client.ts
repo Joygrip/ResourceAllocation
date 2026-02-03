@@ -211,6 +211,17 @@ class ApiClient {
   async seedDatabase(): Promise<{ message: string }> {
     return this.post<{ message: string }>('/dev/seed');
   }
+
+  async getResourcesWithUsers(): Promise<Array<{
+    resource_id: string;
+    display_name: string;
+    employee_id: string;
+    email: string | null;
+    user_object_id: string;
+    user_id: string;
+  }>> {
+    return this.get('/dev/resources-with-users');
+  }
 }
 
 export const apiClient = new ApiClient();

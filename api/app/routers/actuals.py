@@ -203,6 +203,37 @@ async def proxy_sign_actual(
     return _to_response(line)
 
 
+@router.get("/my-resource", response_model=dict)
+async def get_my_resource(
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """
+    Get the current user's resource ID (for employees).
+    Returns null if user has no linked resource.
+    """
+    from api.app.models.core import User, Resource
+    
+    user = db.query(User).filter(
+        and_(
+            User.tenant_id == current_user.tenant_id,
+            User.object_id == current_user.object_id,
+        )
+    ).first()
+    
+    if not user:
+        return {"resource_id": None}
+    
+    resource = db.query(Resource).filter(
+        and_(
+            Resource.tenant_id == current_user.tenant_id,
+            Resource.user_id == user.id,
+        )
+    ).first()
+    
+    return {"resource_id": resource.id if resource else None}
+
+
 @router.get("/resource/{resource_id}/total", response_model=dict)
 async def get_resource_monthly_total(
     resource_id: str,

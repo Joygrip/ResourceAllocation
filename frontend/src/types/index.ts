@@ -91,4 +91,5 @@ export interface DevAuthState {
   userId: string;
   email: string;
   displayName: string;
+  resourceId?: string; // Optional resource ID for employees
 }

@@ -33,7 +33,6 @@ import { useToast } from '../hooks/useToast';
 import { HealthResponse } from '../types';
 import { config } from '../config';
 import { ActionCard } from '../components/ActionCard';
-import { StatusBanner } from '../components/StatusBanner';
 import { LoadingState } from '../components/LoadingState';
 import { approvalsApi } from '../api/approvals';
 import { periodsApi, Period } from '../api/periods';
@@ -266,15 +265,6 @@ export function Dashboard() {
           </div>
         )}
       </div>
-
-      {/* Current Period Status */}
-      {currentPeriod && (
-        <StatusBanner
-          intent={currentPeriod.status === 'open' ? 'info' : 'warning'}
-          title={`Current Period: ${currentPeriodLabel}`}
-          message={currentPeriod.status === 'open' ? 'Period is open for planning and actuals entry.' : 'Period is locked. No edits allowed.'}
-        />
-      )}
 
       {/* Supply/Demand Chart for PM, RO, Director, Finance */}
       {(isPM || isRO || isDirector || isFinance) && periods.length > 0 && (

@@ -230,6 +230,13 @@ export const Approvals: React.FC = () => {
     try {
       setLoading(true);
       const data = await approvalsApi.getInbox();
+      console.log('[Approvals] Loaded approvals:', data);
+      console.log('[Approvals] First approval:', data[0]);
+      if (data[0]) {
+        console.log('[Approvals] Resource name:', data[0].resource_name);
+        console.log('[Approvals] Project name:', data[0].project_name);
+        console.log('[Approvals] Period label:', data[0].period_label);
+      }
       setApprovals(data);
     } catch (err: unknown) {
       setError(formatApiError(err, 'Failed to load approvals'));
@@ -355,7 +362,19 @@ export const Approvals: React.FC = () => {
                       <Badge appearance="outline">
                         {approval.subject_type}
                       </Badge>
-                      <Body1>{approval.subject_id}</Body1>
+                      {approval.resource_name ? (
+                        <Body1>
+                          <strong>{approval.resource_name}</strong>
+                          {approval.project_name && ` - ${approval.project_name}`}
+                          {approval.period_label && ` (${approval.period_label})`}
+                        </Body1>
+                      ) : approval.subject_type === 'actuals' ? (
+                        <Body1 style={{ color: tokens.colorNeutralForeground3, fontStyle: 'italic' }}>
+                          Actuals (ID: {approval.subject_id.substring(0, 8)}...)
+                        </Body1>
+                      ) : (
+                        <Body1>{approval.subject_id}</Body1>
+                      )}
                       {user?.role === 'Director' && getRoStep(approval)?.status === 'pending' && (
                         <Badge appearance="outline" color="informative">
                           Awaiting RO Approval

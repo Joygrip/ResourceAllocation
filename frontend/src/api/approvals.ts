@@ -23,6 +23,12 @@ export interface ApprovalInstance {
   steps: ApprovalStep[];
   created_by: string;
   created_at: string;
+  // Enriched fields for actuals
+  resource_name?: string | null;
+  resource_id?: string | null;
+  project_name?: string | null;
+  project_id?: string | null;
+  period_label?: string | null;
 }
 
 export const approvalsApi = {

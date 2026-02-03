@@ -112,7 +112,7 @@ class ApprovalsService:
         """
         Get approval instances awaiting current user's action.
         
-        For Directors: Shows approvals where RO step is pending (not yet approved by RO)
+        For Directors: Shows approvals where Director step is pending (regardless of RO step status)
         For ROs: Shows approvals where their RO step is pending
         """
         # Get current user's User record
@@ -131,14 +131,12 @@ class ApprovalsService:
         ).all()
         
         for instance in instances:
-            # For Directors: show approvals where RO step is pending
+            # For Directors: show approvals where Director step is pending
             if user.role == "Director":
-                ro_step = next((s for s in instance.steps if s.step_name == "RO"), None)
                 director_step = next((s for s in instance.steps if s.step_name == "Director"), None)
                 
-                # Show if RO step is pending (not yet approved) and Director step exists
-                if ro_step and ro_step.status == StepStatus.PENDING and director_step:
-                    # Check if this Director is the approver for the Director step
+                # Show if Director step is pending and this Director is the approver
+                if director_step and director_step.status == StepStatus.PENDING:
                     if self._can_user_action_step(user, director_step):
                         pending_instances.append(instance)
             else:

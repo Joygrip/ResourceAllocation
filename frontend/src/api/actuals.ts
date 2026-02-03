@@ -60,6 +60,10 @@ export const actualsApi = {
     return apiClient.get<ActualLine[]>(`/actuals/my${query}`);
   },
   
+  async getMyResource(): Promise<{ resource_id: string | null }> {
+    return apiClient.get<{ resource_id: string | null }>('/actuals/my-resource');
+  },
+  
   async getResourceMonthlyTotal(resourceId: string, year: number, month: number): Promise<ResourceMonthlyTotal> {
     return apiClient.get<ResourceMonthlyTotal>(`/actuals/resource/${resourceId}/month?year=${year}&month=${month}`);
   },

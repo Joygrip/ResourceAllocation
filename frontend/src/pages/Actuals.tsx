@@ -223,10 +223,20 @@ export const Actuals: React.FC = () => {
     project_id: '',
     actual_fte_percent: 50,
   });
+  const [myResourceId, setMyResourceId] = useState<string | null>(null);
   
   useEffect(() => {
     loadInitialData();
   }, []);
+  
+  // Load employee's resource ID
+  useEffect(() => {
+    if (isEmployee) {
+      actualsApi.getMyResource()
+        .then(data => setMyResourceId(data.resource_id))
+        .catch(() => setMyResourceId(null));
+    }
+  }, [isEmployee]);
   
   useEffect(() => {
     if (selectedPeriod) {
@@ -295,7 +305,9 @@ export const Actuals: React.FC = () => {
       showError('No period selected', 'Please select a period first.');
       return;
     }
-    if (!formData.resource_id) {
+    // For employees, use their own resource
+    const resourceId = isEmployee && myResourceId ? myResourceId : formData.resource_id;
+    if (!resourceId) {
       showError('Missing resource', 'Please select a resource.');
       return;
     }
@@ -306,7 +318,7 @@ export const Actuals: React.FC = () => {
     try {
       await actualsApi.createActualLine({
         period_id: selectedPeriod,
-        resource_id: formData.resource_id,
+        resource_id: resourceId,
         project_id: formData.project_id,
         year: period.year,
         month: period.month,
@@ -423,7 +435,16 @@ export const Actuals: React.FC = () => {
           </Select>
           
           {!isLocked && (
-            <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
+            <Dialog 
+              open={isDialogOpen} 
+              onOpenChange={(_, data) => {
+                setIsDialogOpen(data.open);
+                // Auto-set resource for employees when dialog opens
+                if (data.open && isEmployee && myResourceId) {
+                  setFormData(prev => ({ ...prev, resource_id: myResourceId }));
+                }
+              }}
+            >
               <DialogTrigger>
                 <Button appearance="primary" icon={<Add24Regular />}>
                   Add Actual
@@ -444,15 +465,27 @@ export const Actuals: React.FC = () => {
                     
                     <div className={styles.formField}>
                       <label>Resource</label>
-                      <Select
-                        value={formData.resource_id}
-                        onChange={(_, data) => setFormData({ ...formData, resource_id: data.value })}
-                      >
-                        <option value="">Select resource...</option>
-                        {resources.map(r => (
-                          <option key={r.id} value={r.id}>{r.display_name}</option>
-                        ))}
-                      </Select>
+                      {isEmployee && myResourceId ? (
+                        <div>
+                          <Body1 style={{ padding: tokens.spacingVerticalS, color: tokens.colorNeutralForeground1, fontWeight: tokens.fontWeightSemibold }}>
+                            {resources.find(r => r.id === myResourceId)?.display_name || 'Your Resource'}
+                          </Body1>
+                          <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+                            (Auto-selected - you can only enter actuals for your own resource)
+                          </Body1>
+                          <input type="hidden" value={myResourceId} />
+                        </div>
+                      ) : (
+                        <Select
+                          value={formData.resource_id}
+                          onChange={(_, data) => setFormData({ ...formData, resource_id: data.value })}
+                        >
+                          <option value="">Select resource...</option>
+                          {resources.map(r => (
+                            <option key={r.id} value={r.id}>{r.display_name}</option>
+                          ))}
+                        </Select>
+                      )}
                     </div>
                     
                     <div className={styles.formField} style={{ marginTop: tokens.spacingVerticalM }}>
