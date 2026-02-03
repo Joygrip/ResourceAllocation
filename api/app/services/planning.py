@@ -1,6 +1,4 @@
 """Planning services - Demand and Supply line management."""
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,33 +11,41 @@ from api.app.services.audit import log_audit
 from api.app.schemas.common import ErrorCode
 
 
-def get_4mfc_boundary() -> tuple[int, int]:
-    """
-    Get the boundary date for 4MFC (4 Month Forward Commitment).
-    Returns (year, month) of the first month where placeholders are allowed.
-    """
-    now = datetime.utcnow()
-    boundary = now + relativedelta(months=4)
-    return boundary.year, boundary.month
-
-
-def is_within_4mfc(year: int, month: int) -> bool:
-    """Check if a given year/month is within the 4MFC window."""
-    boundary_year, boundary_month = get_4mfc_boundary()
-    
-    # Convert to comparable values (year * 12 + month)
-    target = year * 12 + month
-    boundary = boundary_year * 12 + boundary_month
-    
-    return target < boundary
-
-
 class DemandService:
     """Service for demand line operations."""
     
     def __init__(self, db: Session, current_user: CurrentUser):
         self.db = db
         self.current_user = current_user
+    
+    def _get_period_by_id(self, period_id: str) -> Period:
+        """Get period by ID and validate it's open."""
+        period = self.db.query(Period).filter(
+            and_(
+                Period.id == period_id,
+                Period.tenant_id == self.current_user.tenant_id,
+            )
+        ).first()
+        
+        if not period:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "NOT_FOUND",
+                    "message": f"Period not found.",
+                }
+            )
+        
+        if period.status == PeriodStatus.LOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": ErrorCode.PERIOD_LOCKED,
+                    "message": f"Period {period.year}-{period.month:02d} is locked. No edits allowed.",
+                }
+            )
+        
+        return period
     
     def _check_period_open(self, year: int, month: int) -> Period:
         """Check if the period exists and is open."""
@@ -135,17 +141,6 @@ class DemandService:
                 detail={
                     "code": ErrorCode.DEMAND_XOR,
                     "message": "Must specify either resource_id or placeholder_id",
-                }
-            )
-        
-        # Validate 4MFC rule for placeholders
-        if placeholder_id and is_within_4mfc(year, month):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": ErrorCode.PLACEHOLDER_BLOCKED_4MFC,
-                    "message": f"Placeholders are not allowed within the 4-month forward commitment window. "
-                               f"Use named resources for {year}-{month:02d}.",
                 }
             )
         

@@ -6,7 +6,6 @@ import { ApiError } from '../types';
 const codeMessages: Record<string, string> = {
   FTE_INVALID: 'FTE must be between 5 and 100 in steps of 5.',
   DEMAND_XOR: 'Demand must include either a resource or a placeholder (not both).',
-  PLACEHOLDER_BLOCKED_4MFC: 'Placeholders are not allowed within the rolling 4-month forecast window.',
   ACTUALS_OVER_100: 'Total actuals exceed 100% for this resource.',
   PERIOD_LOCKED: 'Period is locked. Edits are not allowed.',
   UNAUTHORIZED_ROLE: 'You do not have permission to perform this action.',

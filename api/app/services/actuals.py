@@ -7,6 +7,7 @@ from sqlalchemy import and_, func
 
 from api.app.models.actuals import ActualLine
 from api.app.models.approvals import ApprovalInstance
+from api.app.models.planning import DemandLine
 from api.app.models.core import Period, Project, Resource, PeriodStatus, User, UserRole
 from api.app.auth.dependencies import CurrentUser
 from api.app.services.audit import log_audit
@@ -49,6 +50,36 @@ class ActualsService:
             )
         
         return period
+    
+    def _get_planned_fte_from_demand(
+        self,
+        resource_id: str,
+        project_id: str,
+        period_id: str,
+        year: int,
+        month: int,
+    ) -> Optional[int]:
+        """
+        Get planned FTE from demand lines for the given resource, project, and period.
+        Returns the sum of all demand lines matching the criteria, or None if no demand found.
+        """
+        demand_lines = self.db.query(DemandLine).filter(
+            and_(
+                DemandLine.tenant_id == self.current_user.tenant_id,
+                DemandLine.resource_id == resource_id,
+                DemandLine.project_id == project_id,
+                DemandLine.period_id == period_id,
+                DemandLine.year == year,
+                DemandLine.month == month,
+            )
+        ).all()
+        
+        if not demand_lines:
+            return None
+        
+        # Sum up all demand lines for this resource/project/period
+        total_planned = sum(dl.fte_percent for dl in demand_lines)
+        return total_planned
     
     def _check_100_percent_limit(
         self,
@@ -235,6 +266,16 @@ class ActualsService:
         
         # Check 100% limit
         self._check_100_percent_limit(resource_id, year, month, actual_fte_percent)
+        
+        # Auto-calculate planned_fte_percent from demand lines if not provided
+        if planned_fte_percent is None:
+            planned_fte_percent = self._get_planned_fte_from_demand(
+                resource_id=resource_id,
+                project_id=project_id,
+                period_id=period.id,
+                year=year,
+                month=month,
+            )
         
         # Create actual line
         actual = ActualLine(

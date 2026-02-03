@@ -144,8 +144,8 @@ def test_xor_blocks_neither_id(client, pm_headers, setup_planning_data):
     assert response.json()["code"] == "DEMAND_XOR"
 
 
-def test_placeholder_blocked_in_4mfc(client, pm_headers, setup_planning_data):
-    """Placeholders are blocked within 4MFC window."""
+def test_placeholder_allowed_any_time(client, pm_headers, setup_planning_data):
+    """Placeholders are allowed at any time (4MFC restriction removed)."""
     data = setup_planning_data
     response = client.post(
         "/demand-lines",
@@ -158,25 +158,7 @@ def test_placeholder_blocked_in_4mfc(client, pm_headers, setup_planning_data):
         },
         headers=pm_headers,
     )
-    assert response.status_code == 400
-    assert response.json()["code"] == "PLACEHOLDER_BLOCKED_4MFC"
-
-
-def test_placeholder_allowed_outside_4mfc(client, pm_headers, setup_planning_data):
-    """Placeholders are allowed outside 4MFC window."""
-    data = setup_planning_data
-    response = client.post(
-        "/demand-lines",
-        json={
-            "project_id": data["project_id"],
-            "placeholder_id": data["placeholder_id"],
-            "year": data["future_year"],
-            "month": data["future_month"],
-            "fte_percent": 50,
-        },
-        headers=pm_headers,
-    )
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["placeholder_id"] == data["placeholder_id"]
 
 

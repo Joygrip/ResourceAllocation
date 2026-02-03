@@ -44,6 +44,7 @@ import {
 import { actualsApi, ActualLine, CreateActualLine } from '../api/actuals';
 import { periodsApi, Period } from '../api/periods';
 import { lookupsApi, Project, Resource } from '../api/lookups';
+import { planningApi, DemandLine, SupplyLine } from '../api/planning';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { ApiError } from '../types';
@@ -109,6 +110,8 @@ export const Actuals: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [overLimitIds, setOverLimitIds] = useState<string[]>([]);
+  const [demandLines, setDemandLines] = useState<DemandLine[]>([]);
+  const [supplyLines, setSupplyLines] = useState<SupplyLine[]>([]);
   
   const isEmployee = user?.role === 'Employee';
   const isRO = user?.role === 'RO';
@@ -120,11 +123,10 @@ export const Actuals: React.FC = () => {
   const [proxyReason, setProxyReason] = useState('');
   const [isProxySign, setIsProxySign] = useState(false);
   
-  const [formData, setFormData] = useState<Omit<CreateActualLine, 'year' | 'month'>>({
+  const [formData, setFormData] = useState<Omit<CreateActualLine, 'year' | 'month' | 'planned_fte_percent'>>({
     period_id: '',
     resource_id: '',
     project_id: '',
-    planned_fte_percent: 0,
     actual_fte_percent: 50,
   });
   
@@ -172,6 +174,22 @@ export const Actuals: React.FC = () => {
         : await actualsApi.getActualLines(undefined, currentPeriod?.year, currentPeriod?.month);
       setActuals(data);
       setOverLimitIds([]);
+      
+      // For employees, also load demand and supply lines for their resource
+      if (isEmployee && selectedPeriod) {
+        try {
+          const [demands, supplies] = await Promise.all([
+            planningApi.getDemandLines(selectedPeriod).catch(() => []),
+            planningApi.getSupplyLines(selectedPeriod).catch(() => []),
+          ]);
+          setDemandLines(demands || []);
+          setSupplyLines(supplies || []);
+        } catch (err) {
+          console.error('Failed to load demand/supply lines:', err);
+          setDemandLines([]);
+          setSupplyLines([]);
+        }
+      }
     } catch (err: unknown) {
       showApiError(err as Error, 'Failed to load actuals');
     }
@@ -193,11 +211,14 @@ export const Actuals: React.FC = () => {
     }
     try {
       await actualsApi.createActualLine({
-        ...formData,
         period_id: selectedPeriod,
+        resource_id: formData.resource_id,
+        project_id: formData.project_id,
         year: period.year,
         month: period.month,
-      } as CreateActualLine);
+        actual_fte_percent: formData.actual_fte_percent,
+        // planned_fte_percent is omitted - backend will calculate it automatically
+      });
       showSuccess('Actual line created');
       setIsDialogOpen(false);
       loadActuals();
@@ -207,7 +228,6 @@ export const Actuals: React.FC = () => {
         period_id: selectedPeriod,
         resource_id: '',
         project_id: '',
-        planned_fte_percent: 0,
         actual_fte_percent: 50,
       });
     } catch (err: unknown) {
@@ -354,29 +374,19 @@ export const Actuals: React.FC = () => {
                       </Select>
                     </div>
                     
-                    <div className={styles.formRow} style={{ marginTop: tokens.spacingVerticalM }}>
-                      <div className={styles.formField}>
-                        <label>Planned FTE %</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={String(formData.planned_fte_percent)}
-                          onChange={(_, data) => setFormData({ ...formData, planned_fte_percent: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>Actual FTE %</label>
-                        <Input
-                          type="number"
-                          min={5}
-                          max={100}
-                          step={5}
-                          value={String(formData.actual_fte_percent)}
-                          onChange={(_, data) => setFormData({ ...formData, actual_fte_percent: parseInt(data.value) })}
-                        />
-                      </div>
+                    <div className={styles.formField} style={{ marginTop: tokens.spacingVerticalM }}>
+                      <label>Actual FTE %</label>
+                      <Input
+                        type="number"
+                        min={5}
+                        max={100}
+                        step={5}
+                        value={String(formData.actual_fte_percent)}
+                        onChange={(_, data) => setFormData({ ...formData, actual_fte_percent: parseInt(data.value) })}
+                      />
+                      <Body1 style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>
+                        Planned FTE will be automatically calculated from demand lines for this project.
+                      </Body1>
                     </div>
                     
                     <MessageBar intent="warning" style={{ marginTop: tokens.spacingVerticalM }}>
@@ -404,6 +414,59 @@ export const Actuals: React.FC = () => {
         <MessageBar intent="error" style={{ marginBottom: tokens.spacingVerticalM }}>
           <MessageBarBody>{error}</MessageBarBody>
         </MessageBar>
+      )}
+      
+      {/* Demand and Supply Summary for Employees */}
+      {isEmployee && selectedPeriod && (demandLines.length > 0 || supplyLines.length > 0) && (
+        <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL }}>
+          <CardHeader header={<Title1>Planning Summary</Title1>} />
+          <div style={{ padding: tokens.spacingHorizontalL }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: tokens.spacingHorizontalL }}>
+              <div>
+                <Body1 style={{ fontWeight: tokens.fontWeightSemibold, marginBottom: tokens.spacingVerticalS }}>
+                  Total Demand
+                </Body1>
+                <Body1 style={{ fontSize: tokens.fontSizeBase500, color: tokens.colorPaletteBlueForeground1 }}>
+                  {demandLines.reduce((sum, d) => sum + (d.fte_percent || 0), 0)}%
+                </Body1>
+                <Body1 style={{ marginTop: tokens.spacingVerticalXS, fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+                  {demandLines.length} demand line{demandLines.length !== 1 ? 's' : ''} across {new Set(demandLines.map(d => d.project_id)).size} project{new Set(demandLines.map(d => d.project_id)).size !== 1 ? 's' : ''}
+                </Body1>
+              </div>
+              <div>
+                <Body1 style={{ fontWeight: tokens.fontWeightSemibold, marginBottom: tokens.spacingVerticalS }}>
+                  Total Supply
+                </Body1>
+                <Body1 style={{ fontSize: tokens.fontSizeBase500, color: tokens.colorPaletteGreenForeground1 }}>
+                  {supplyLines.reduce((sum, s) => sum + (s.fte_percent || 0), 0)}%
+                </Body1>
+                <Body1 style={{ marginTop: tokens.spacingVerticalXS, fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+                  {supplyLines.length} supply line{supplyLines.length !== 1 ? 's' : ''}
+                </Body1>
+              </div>
+            </div>
+            {demandLines.length > 0 && (
+              <div style={{ marginTop: tokens.spacingVerticalL }}>
+                <Body1 style={{ fontWeight: tokens.fontWeightSemibold, marginBottom: tokens.spacingVerticalS }}>
+                  Demand by Project:
+                </Body1>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                  {Array.from(new Set(demandLines.map(d => d.project_id))).map(projectId => {
+                    const projectDemands = demandLines.filter(d => d.project_id === projectId);
+                    const projectTotal = projectDemands.reduce((sum, d) => sum + (d.fte_percent || 0), 0);
+                    const projectName = projects.find(p => p.id === projectId)?.name || 'Unknown Project';
+                    return (
+                      <div key={projectId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Body1>{projectName}</Body1>
+                        <Badge appearance="outline">{projectTotal}%</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
       )}
       
       {/* Resource totals */}
@@ -463,7 +526,11 @@ export const Actuals: React.FC = () => {
                   <TableCell>{getResourceName(a.resource_id)}</TableCell>
                   <TableCell>{getProjectName(a.project_id)}</TableCell>
                   <TableCell>{a.year}-{String(a.month).padStart(2, '0')}</TableCell>
-                  <TableCell>{a.planned_fte_percent}%</TableCell>
+                  <TableCell>
+                    {a.planned_fte_percent !== null && a.planned_fte_percent !== undefined 
+                      ? `${a.planned_fte_percent}%` 
+                      : <span style={{ color: tokens.colorNeutralForeground3, fontStyle: 'italic' }}>No plan</span>}
+                  </TableCell>
                   <TableCell>
                     <Badge appearance="filled" color="informative">{a.actual_fte_percent}%</Badge>
                   </TableCell>

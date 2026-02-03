@@ -11,7 +11,7 @@ export interface ActualLine {
   project_id: string;
   year: number;
   month: number;
-  planned_fte_percent: number;
+  planned_fte_percent: number | null;
   actual_fte_percent: number;
   employee_signed_at?: string;
   employee_signed_by?: string;
@@ -29,7 +29,7 @@ export interface CreateActualLine {
   project_id: string;
   year: number;
   month: number;
-  planned_fte_percent: number;
+  planned_fte_percent?: number | null;
   actual_fte_percent: number;
 }
 

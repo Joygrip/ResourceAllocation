@@ -337,9 +337,6 @@ export const Demand: React.FC = () => {
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </Select>
-                        <MessageBar intent="warning">
-                          <MessageBarBody>Placeholders forbidden in 4-month forecast window</MessageBarBody>
-                        </MessageBar>
                       </div>
                     )}
                     

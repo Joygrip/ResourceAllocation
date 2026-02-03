@@ -23,9 +23,10 @@ async def list_demand_lines(
     period_id: Optional[str] = Query(None, description="Filter by period ID"),
     year: Optional[int] = Query(None, description="Filter by year (deprecated, use period_id)"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID (for employees to see their own)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR, UserRole.EMPLOYEE
     )),
 ):
     """
@@ -33,8 +34,31 @@ async def list_demand_lines(
     
     Prefer period_id over year/month for filtering.
     
-    Accessible to: Admin, Finance (read-only), PM, RO (read-only), Director (read-only)
+    For employees: Only shows demand lines for their own resource.
+    For other roles: Shows all demand lines (filtered by resource_id if provided).
+    
+    Accessible to: Admin, Finance (read-only), PM, RO (read-only), Director (read-only), Employee (own resource only)
     """
+    # For employees, get their resource and filter to only their demand lines
+    employee_resource_id = None
+    if current_user.role == UserRole.EMPLOYEE:
+        from api.app.models.core import User, Resource
+        user = db.query(User).filter(
+            and_(
+                User.tenant_id == current_user.tenant_id,
+                User.object_id == current_user.object_id,
+            )
+        ).first()
+        if user:
+            resource = db.query(Resource).filter(
+                and_(
+                    Resource.tenant_id == current_user.tenant_id,
+                    Resource.user_id == user.id,
+                )
+            ).first()
+            if resource:
+                employee_resource_id = resource.id
+    
     service = DemandService(db, current_user)
     if period_id:
         # Filter by period_id
@@ -58,6 +82,12 @@ async def list_demand_lines(
             logger.warning(f"Period not found: period_id={period_id}, tenant={current_user.tenant_id}")
     else:
         lines = service.get_all(year, month)
+    
+    # Filter by resource_id if provided or if employee
+    if employee_resource_id:
+        lines = [line for line in lines if line.resource_id == employee_resource_id]
+    elif resource_id:
+        lines = [line for line in lines if line.resource_id == resource_id]
     
     # Enrich with names
     result = []
@@ -129,7 +159,6 @@ async def create_demand_line(
     
     Rules:
     - Must specify either resource_id OR placeholder_id (XOR)
-    - Placeholders not allowed within 4MFC window
     - FTE must be 5-100 in steps of 5
     - Period must be open
     
@@ -222,9 +251,10 @@ async def list_supply_lines(
     period_id: Optional[str] = Query(None, description="Filter by period ID"),
     year: Optional[int] = Query(None, description="Filter by year (deprecated, use period_id)"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID (for employees to see their own)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR, UserRole.EMPLOYEE
     )),
 ):
     """
@@ -232,8 +262,31 @@ async def list_supply_lines(
     
     Prefer period_id over year/month for filtering.
     
-    Accessible to: Admin, Finance (read-only), PM (read-only), RO, Director (read-only)
+    For employees: Only shows supply lines for their own resource.
+    For other roles: Shows all supply lines (filtered by resource_id if provided).
+    
+    Accessible to: Admin, Finance (read-only), PM (read-only), RO, Director (read-only), Employee (own resource only)
     """
+    # For employees, get their resource and filter to only their supply lines
+    employee_resource_id = None
+    if current_user.role == UserRole.EMPLOYEE:
+        from api.app.models.core import User, Resource
+        user = db.query(User).filter(
+            and_(
+                User.tenant_id == current_user.tenant_id,
+                User.object_id == current_user.object_id,
+            )
+        ).first()
+        if user:
+            resource = db.query(Resource).filter(
+                and_(
+                    Resource.tenant_id == current_user.tenant_id,
+                    Resource.user_id == user.id,
+                )
+            ).first()
+            if resource:
+                employee_resource_id = resource.id
+    
     service = SupplyService(db, current_user)
     if period_id:
         # Filter by period_id
@@ -250,6 +303,12 @@ async def list_supply_lines(
             lines = []
     else:
         lines = service.get_all(year, month)
+    
+    # Filter by resource_id if provided or if employee
+    if employee_resource_id:
+        lines = [line for line in lines if line.resource_id == employee_resource_id]
+    elif resource_id:
+        lines = [line for line in lines if line.resource_id == resource_id]
     
     result = []
     for line in lines:
