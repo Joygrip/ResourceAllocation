@@ -90,38 +90,4 @@ export const planningApi = {
     return apiClient.delete(`/supply-lines/${id}`);
   },
   
-  // Planning Insights
-  async getInsights(periodId: string): Promise<PlanningInsights> {
-    return apiClient.get<PlanningInsights>(`/insights?period_id=${periodId}`);
-  },
 };
-
-export interface PlanningInsights {
-  period: {
-    id: string;
-    year: number;
-    month: number;
-    status: string;
-  };
-  by_cost_center: Array<{
-    cost_center_id: string;
-    cost_center_name: string;
-    demand_total: number;
-    supply_total: number;
-    gap: number;
-  }>;
-  orphan_demand: Array<{
-    demand_line_id: string;
-    project_name: string;
-    resource_or_placeholder: string;
-    fte_percent: number;
-    reason: string;
-  }>;
-  stats: {
-    total_demand: number;
-    total_supply: number;
-    total_gap: number;
-    gaps_count: number;
-    orphans_count: number;
-  };
-}

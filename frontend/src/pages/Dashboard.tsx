@@ -38,6 +38,8 @@ import { LoadingState } from '../components/LoadingState';
 import { approvalsApi } from '../api/approvals';
 import { periodsApi, Period } from '../api/periods';
 import { actualsApi } from '../api/actuals';
+import { planningApi } from '../api/planning';
+import { SupplyDemandChart } from '../components/SupplyDemandChart';
 
 const useStyles = makeStyles({
   container: {
@@ -122,12 +124,17 @@ export function Dashboard() {
   const [unsignedActuals, setUnsignedActuals] = useState(0);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [demandLines, setDemandLines] = useState<any[]>([]);
+  const [supplyLines, setSupplyLines] = useState<any[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [selectedPeriodForChart, setSelectedPeriodForChart] = useState<string>('');
 
   const isAdmin = user?.role === 'Admin';
   const isEmployee = user?.role === 'Employee';
   const isRO = user?.role === 'RO';
   const isDirector = user?.role === 'Director';
   const isFinance = user?.role === 'Finance';
+  const isPM = user?.role === 'PM';
 
   useEffect(() => {
     loadDashboardData();
@@ -164,6 +171,15 @@ export function Dashboard() {
           console.error('Failed to load actuals:', error);
         }
       }
+
+      // Load supply/demand data for chart (PM, RO, Director, Finance)
+      if (isPM || isRO || isDirector || isFinance) {
+        const openPeriod = periodsData.find((p: Period) => p.status === 'open') || periodsData[0];
+        if (openPeriod) {
+          setSelectedPeriodForChart(openPeriod.id);
+          loadChartData(openPeriod.id);
+        }
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -181,6 +197,37 @@ export function Dashboard() {
     } finally {
       setSeeding(false);
     }
+  };
+
+  const loadChartData = async (periodId: string) => {
+    if (!periodId) return;
+    try {
+      setChartLoading(true);
+      console.log('[Dashboard] Loading chart data for period:', periodId);
+      const [demands, supplies] = await Promise.all([
+        planningApi.getDemandLines(periodId).catch((err) => {
+          console.error('[Dashboard] Failed to load demand lines:', err);
+          return [];
+        }),
+        planningApi.getSupplyLines(periodId).catch((err) => {
+          console.error('[Dashboard] Failed to load supply lines:', err);
+          return [];
+        }),
+      ]);
+      console.log('[Dashboard] Loaded demand lines:', demands.length, demands);
+      console.log('[Dashboard] Loaded supply lines:', supplies.length, supplies);
+      setDemandLines(demands || []);
+      setSupplyLines(supplies || []);
+    } catch (error) {
+      console.error('[Dashboard] Failed to load chart data:', error);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
+  const handlePeriodChange = (periodId: string) => {
+    setSelectedPeriodForChart(periodId);
+    loadChartData(periodId);
   };
 
   if (loading) {
@@ -227,6 +274,47 @@ export function Dashboard() {
           title={`Current Period: ${currentPeriodLabel}`}
           message={currentPeriod.status === 'open' ? 'Period is open for planning and actuals entry.' : 'Period is locked. No edits allowed.'}
         />
+      )}
+
+      {/* Supply/Demand Chart for PM, RO, Director, Finance */}
+      {(isPM || isRO || isDirector || isFinance) && periods.length > 0 && (
+        <div style={{ marginBottom: tokens.spacingVerticalXL }}>
+          <div style={{ marginBottom: tokens.spacingVerticalM, display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+            <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>
+              Select Period:
+            </Body1>
+            <select
+              value={selectedPeriodForChart}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              style={{ 
+                minWidth: '200px',
+                padding: tokens.spacingVerticalS,
+                borderRadius: tokens.borderRadiusSmall,
+                border: `1px solid ${tokens.colorNeutralStroke1}`,
+                fontSize: tokens.fontSizeBase300,
+              }}
+            >
+              {periods.map((period) => (
+                <option key={period.id} value={period.id}>
+                  {monthNames[period.month - 1]} {period.year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <SupplyDemandChart
+            demandLines={demandLines}
+            supplyLines={supplyLines}
+            loading={chartLoading}
+            periodLabel={
+              selectedPeriodForChart
+                ? (() => {
+                    const period = periods.find((p) => p.id === selectedPeriodForChart);
+                    return period ? `${monthNames[period.month - 1]} ${period.year}` : undefined;
+                  })()
+                : undefined
+            }
+          />
+        </div>
       )}
 
       {/* Action Cards */}

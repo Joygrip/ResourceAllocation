@@ -30,12 +30,10 @@ import {
   DialogActions,
   MessageBar,
   MessageBarBody,
-  TabList,
-  Tab,
   Title3,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular, CalendarRegular, ChartMultipleRegular } from '@fluentui/react-icons';
-import { planningApi, DemandLine, CreateDemandLine, PlanningInsights } from '../api/planning';
+import { Add24Regular, Delete24Regular, CalendarRegular } from '@fluentui/react-icons';
+import { planningApi, DemandLine, CreateDemandLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { lookupsApi, Project, Resource, Placeholder } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
@@ -105,9 +103,6 @@ export const Demand: React.FC = () => {
     fte_percent: 50,
   });
   const [useResource, setUseResource] = useState(true);
-  const [activeTab, setActiveTab] = useState<'lines' | 'insights'>('lines');
-  const [insights, setInsights] = useState<PlanningInsights | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(false);
   
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
@@ -119,30 +114,8 @@ export const Demand: React.FC = () => {
   useEffect(() => {
     if (selectedPeriod) {
       loadDemands();
-      if (activeTab === 'insights') {
-        loadInsights();
-      }
     }
   }, [selectedPeriod]);
-  
-  useEffect(() => {
-    if (activeTab === 'insights' && selectedPeriod) {
-      loadInsights();
-    }
-  }, [activeTab, selectedPeriod]);
-  
-  const loadInsights = async () => {
-    if (!selectedPeriod) return;
-    try {
-      setInsightsLoading(true);
-      const data = await planningApi.getInsights(selectedPeriod);
-      setInsights(data);
-    } catch (err: unknown) {
-      showApiError(err as Error, 'Failed to load insights');
-    } finally {
-      setInsightsLoading(false);
-    }
-  };
   
   const loadInitialData = async () => {
     try {
@@ -410,16 +383,7 @@ export const Demand: React.FC = () => {
         <StatusBanner intent="danger" title="Error" message={error} />
       )}
 
-      <TabList 
-        selectedValue={activeTab} 
-        onTabSelect={(_, data) => setActiveTab(data.value as 'lines' | 'insights')}
-        style={{ marginBottom: tokens.spacingVerticalL }}
-      >
-        <Tab value="lines">Demand Lines</Tab>
-        <Tab value="insights" icon={<ChartMultipleRegular />}>Insights</Tab>
-      </TabList>
 
-      {activeTab === 'lines' && (
       <Card className={styles.card}>
         <CardHeader header={<Body1><strong>Demand Lines ({demands.length})</strong></Body1>} />
         
@@ -487,101 +451,6 @@ export const Demand: React.FC = () => {
           </TableBody>
         </Table>
       </Card>
-      )}
-      
-      {activeTab === 'insights' && (
-        <Card className={styles.card}>
-          <CardHeader header={<Title3>Planning Insights</Title3>} />
-          {insightsLoading ? (
-            <LoadingState message="Loading insights..." />
-          ) : insights ? (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: tokens.spacingHorizontalM, marginBottom: tokens.spacingVerticalL }}>
-                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
-                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Demand</Body1>
-                  <Title3>{insights.stats.total_demand}%</Title3>
-                </div>
-                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
-                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Supply</Body1>
-                  <Title3>{insights.stats.total_supply}%</Title3>
-                </div>
-                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
-                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Gap</Body1>
-                  <Title3 style={{ color: insights.stats.total_gap < 0 ? tokens.colorPaletteRedBackground3 : tokens.colorPaletteGreenBackground3 }}>
-                    {insights.stats.total_gap > 0 ? '+' : ''}{insights.stats.total_gap}%
-                  </Title3>
-                </div>
-              </div>
-              
-              <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Gaps by Cost Center</Title3>
-              <Table className={styles.table}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>Cost Center</TableHeaderCell>
-                    <TableHeaderCell>Demand</TableHeaderCell>
-                    <TableHeaderCell>Supply</TableHeaderCell>
-                    <TableHeaderCell>Gap</TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {insights.by_cost_center.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
-                        <Body1>No cost center data available</Body1>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    insights.by_cost_center.map((cc) => (
-                      <TableRow key={cc.cost_center_id}>
-                        <TableCell>{cc.cost_center_name}</TableCell>
-                        <TableCell>{cc.demand_total}%</TableCell>
-                        <TableCell>{cc.supply_total}%</TableCell>
-                        <TableCell>
-                          <Badge appearance={cc.gap < 0 ? 'filled' : 'outline'} color={cc.gap < 0 ? 'danger' : 'success'}>
-                            {cc.gap > 0 ? '+' : ''}{cc.gap}%
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              
-              {insights.orphan_demand.length > 0 && (
-                <>
-                  <Title3 style={{ marginTop: tokens.spacingVerticalXL, marginBottom: tokens.spacingVerticalM }}>Orphan Demand</Title3>
-                  <Table className={styles.table}>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHeaderCell>Project</TableHeaderCell>
-                        <TableHeaderCell>Resource/Placeholder</TableHeaderCell>
-                        <TableHeaderCell>FTE %</TableHeaderCell>
-                        <TableHeaderCell>Reason</TableHeaderCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {insights.orphan_demand.map((orphan) => (
-                        <TableRow key={orphan.demand_line_id}>
-                          <TableCell>{orphan.project_name}</TableCell>
-                          <TableCell>{orphan.resource_or_placeholder}</TableCell>
-                          <TableCell>{orphan.fte_percent}%</TableCell>
-                          <TableCell>{orphan.reason}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              icon={<ChartMultipleRegular />}
-              title="No Insights Available"
-              description="Select a period to view planning insights."
-            />
-          )}
-        </Card>
-      )}
     </div>
   );
 };
