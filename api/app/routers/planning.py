@@ -25,7 +25,7 @@ async def list_demand_lines(
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """
@@ -33,7 +33,7 @@ async def list_demand_lines(
     
     Prefer period_id over year/month for filtering.
     
-    Accessible to: Admin, Finance (read-only), PM, RO (read-only)
+    Accessible to: Admin, Finance (read-only), PM, RO (read-only), Director (read-only)
     """
     service = DemandService(db, current_user)
     if period_id:
@@ -89,7 +89,7 @@ async def get_demand_line(
     demand_id: str,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """Get a specific demand line."""
@@ -224,7 +224,7 @@ async def list_supply_lines(
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """
@@ -232,7 +232,7 @@ async def list_supply_lines(
     
     Prefer period_id over year/month for filtering.
     
-    Accessible to: Admin, Finance (read-only), PM (read-only), RO
+    Accessible to: Admin, Finance (read-only), PM (read-only), RO, Director (read-only)
     """
     service = SupplyService(db, current_user)
     if period_id:
@@ -276,7 +276,7 @@ async def get_supply_line(
     supply_id: str,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
-        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO, UserRole.DIRECTOR
     )),
 ):
     """Get a specific supply line."""

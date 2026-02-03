@@ -284,7 +284,7 @@ export function Dashboard() {
               Select Period:
             </Body1>
             <select
-              value={selectedPeriodForChart}
+              value={selectedPeriodForChart || ''}
               onChange={(e) => handlePeriodChange(e.target.value)}
               style={{ 
                 minWidth: '200px',
@@ -301,19 +301,21 @@ export function Dashboard() {
               ))}
             </select>
           </div>
-          <SupplyDemandChart
-            demandLines={demandLines}
-            supplyLines={supplyLines}
-            loading={chartLoading}
-            periodLabel={
-              selectedPeriodForChart
-                ? (() => {
-                    const period = periods.find((p) => p.id === selectedPeriodForChart);
-                    return period ? `${monthNames[period.month - 1]} ${period.year}` : undefined;
-                  })()
-                : undefined
-            }
-          />
+          {selectedPeriodForChart && (
+            <SupplyDemandChart
+              demandLines={demandLines}
+              supplyLines={supplyLines}
+              loading={chartLoading}
+              periodLabel={
+                selectedPeriodForChart
+                  ? (() => {
+                      const period = periods.find((p) => p.id === selectedPeriodForChart);
+                      return period ? `${monthNames[period.month - 1]} ${period.year}` : undefined;
+                    })()
+                  : undefined
+              }
+            />
+          )}
         </div>
       )}
 

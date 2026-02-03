@@ -47,4 +47,11 @@ export const approvalsApi = {
       { comment }
     );
   },
+  
+  async proxyApproveDirectorStep(instanceId: string, stepId: string, comment: string): Promise<ApprovalInstance> {
+    return apiClient.post<ApprovalInstance>(
+      `/approvals/${instanceId}/steps/${stepId}/proxy-approve`,
+      { comment }
+    );
+  },
 };

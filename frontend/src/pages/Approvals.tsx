@@ -40,6 +40,7 @@ import {
 import { approvalsApi, ApprovalInstance, ApprovalStep } from '../api/approvals';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
+import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
   container: {
@@ -126,6 +127,7 @@ const getStepClass = (styles: ReturnType<typeof useStyles>, status: string) => {
 export const Approvals: React.FC = () => {
   const styles = useStyles();
   const { showSuccess, showApiError, showWarning } = useToast();
+  const { user } = useAuth();
   
   const [approvals, setApprovals] = useState<ApprovalInstance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export const Approvals: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalInstance | null>(null);
   const [selectedStep, setSelectedStep] = useState<ApprovalStep | null>(null);
-  const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'proxy-approve'>('approve');
   const [comment, setComment] = useState('');
   
   useEffect(() => {
@@ -154,7 +156,7 @@ export const Approvals: React.FC = () => {
     }
   };
   
-  const openActionDialog = (approval: ApprovalInstance, step: ApprovalStep, action: 'approve' | 'reject') => {
+  const openActionDialog = (approval: ApprovalInstance, step: ApprovalStep, action: 'approve' | 'reject' | 'proxy-approve') => {
     setSelectedApproval(approval);
     setSelectedStep(step);
     setActionType(action);
@@ -165,11 +167,20 @@ export const Approvals: React.FC = () => {
   const handleAction = async () => {
     if (!selectedApproval || !selectedStep) return;
     
+    // Proxy approval requires comment
+    if (actionType === 'proxy-approve' && (!comment || !comment.trim())) {
+      showApiError(new Error('Explanation is required for proxy approval'), 'Validation Error');
+      return;
+    }
+    
     try {
       setLoading(true);
       if (actionType === 'approve') {
         await approvalsApi.approveStep(selectedApproval.id, selectedStep.id, comment || undefined);
         showSuccess('Approved successfully');
+      } else if (actionType === 'proxy-approve') {
+        await approvalsApi.proxyApproveDirectorStep(selectedApproval.id, selectedStep.id, comment);
+        showSuccess('Proxy-approved successfully');
       } else {
         await approvalsApi.rejectStep(selectedApproval.id, selectedStep.id, comment || undefined);
         showWarning('Rejected');
@@ -190,6 +201,22 @@ export const Approvals: React.FC = () => {
   
   const getCurrentStep = (approval: ApprovalInstance): ApprovalStep | null => {
     return approval.steps.find(s => s.status === 'pending') || null;
+  };
+  
+  const getRoStep = (approval: ApprovalInstance): ApprovalStep | null => {
+    return approval.steps.find(s => s.step_name === 'RO') || null;
+  };
+  
+  const getDirectorStep = (approval: ApprovalInstance): ApprovalStep | null => {
+    return approval.steps.find(s => s.step_name === 'Director') || null;
+  };
+  
+  const canProxyApprove = (approval: ApprovalInstance): boolean => {
+    if (user?.role !== 'RO') return false;
+    const roStep = getRoStep(approval);
+    const directorStep = getDirectorStep(approval);
+    // RO can proxy-approve if RO step is approved and Director step is pending
+    return roStep?.status === 'approved' && directorStep?.status === 'pending';
   };
   
   if (loading) {
@@ -247,6 +274,11 @@ export const Approvals: React.FC = () => {
                         {approval.subject_type}
                       </Badge>
                       <Body1>{approval.subject_id}</Body1>
+                      {user?.role === 'Director' && getRoStep(approval)?.status === 'pending' && (
+                        <Badge appearance="outline" color="informative">
+                          Awaiting RO Approval
+                        </Badge>
+                      )}
                       <Badge 
                         appearance="filled" 
                         color={approval.status === 'approved' ? 'success' : approval.status === 'rejected' ? 'danger' : 'warning'}
@@ -306,6 +338,29 @@ export const Approvals: React.FC = () => {
                           </Button>
                         </div>
                       )}
+                      
+                      {/* Proxy approve button for RO when Director step is pending */}
+                      {canProxyApprove(approval) && (
+                        <div className={styles.actions} style={{ marginTop: tokens.spacingVerticalM }}>
+                          <MessageBar intent="info" style={{ marginBottom: tokens.spacingVerticalS }}>
+                            <MessageBarBody>
+                              RO step is approved. You can proxy-approve the Director step with an explanation.
+                            </MessageBarBody>
+                          </MessageBar>
+                          <Button 
+                            appearance="primary" 
+                            icon={<Checkmark24Regular />}
+                            onClick={() => {
+                              const directorStep = getDirectorStep(approval);
+                              if (directorStep) {
+                                openActionDialog(approval, directorStep, 'proxy-approve');
+                              }
+                            }}
+                          >
+                            Proxy-Approve Director Step
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </AccordionPanel>
                 </AccordionItem>
@@ -320,9 +375,16 @@ export const Approvals: React.FC = () => {
         <DialogSurface>
           <DialogBody>
             <DialogTitle>
-              {actionType === 'approve' ? 'Approve' : 'Reject'} - {selectedStep?.step_name}
+              {actionType === 'approve' ? 'Approve' : actionType === 'proxy-approve' ? 'Proxy-Approve Director Step' : 'Reject'} - {selectedStep?.step_name}
             </DialogTitle>
             <DialogContent>
+              {actionType === 'proxy-approve' && (
+                <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
+                  <MessageBarBody>
+                    You are approving the Director step on behalf of the Director. An explanation is required.
+                  </MessageBarBody>
+                </MessageBar>
+              )}
               {actionType === 'reject' && (
                 <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
                   <MessageBarBody>
@@ -331,10 +393,11 @@ export const Approvals: React.FC = () => {
                 </MessageBar>
               )}
               <Textarea
-                placeholder="Add a comment (optional)"
+                placeholder={actionType === 'proxy-approve' ? 'Explanation (required)' : 'Add a comment (optional)'}
                 value={comment}
                 onChange={(_, data) => setComment(data.value)}
                 style={{ width: '100%', minHeight: '100px' }}
+                required={actionType === 'proxy-approve'}
               />
             </DialogContent>
             <DialogActions>
@@ -343,8 +406,9 @@ export const Approvals: React.FC = () => {
                 appearance="primary" 
                 onClick={handleAction}
                 style={actionType === 'reject' ? { backgroundColor: tokens.colorPaletteRedBackground3 } : undefined}
+                disabled={actionType === 'proxy-approve' && (!comment || !comment.trim())}
               >
-                {actionType === 'approve' ? 'Approve' : 'Reject'}
+                {actionType === 'approve' ? 'Approve' : actionType === 'proxy-approve' ? 'Proxy-Approve' : 'Reject'}
               </Button>
             </DialogActions>
           </DialogBody>

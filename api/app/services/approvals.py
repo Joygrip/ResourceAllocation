@@ -109,7 +109,12 @@ class ApprovalsService:
         return instance
     
     def get_inbox(self) -> List[ApprovalInstance]:
-        """Get approval instances awaiting current user's action."""
+        """
+        Get approval instances awaiting current user's action.
+        
+        For Directors: Shows approvals where RO step is pending (not yet approved by RO)
+        For ROs: Shows approvals where their RO step is pending
+        """
         # Get current user's User record
         user = self._get_user()
         if not user:
@@ -126,15 +131,26 @@ class ApprovalsService:
         ).all()
         
         for instance in instances:
-            # Find the current step (first pending step)
-            current_step = None
-            for step in sorted(instance.steps, key=lambda s: s.step_order):
-                if step.status == StepStatus.PENDING:
-                    current_step = step
-                    break
-            
-            if current_step and self._can_user_action_step(user, current_step):
-                pending_instances.append(instance)
+            # For Directors: show approvals where RO step is pending
+            if user.role == "Director":
+                ro_step = next((s for s in instance.steps if s.step_name == "RO"), None)
+                director_step = next((s for s in instance.steps if s.step_name == "Director"), None)
+                
+                # Show if RO step is pending (not yet approved) and Director step exists
+                if ro_step and ro_step.status == StepStatus.PENDING and director_step:
+                    # Check if this Director is the approver for the Director step
+                    if self._can_user_action_step(user, director_step):
+                        pending_instances.append(instance)
+            else:
+                # For ROs: show approvals where their RO step is pending
+                current_step = None
+                for step in sorted(instance.steps, key=lambda s: s.step_order):
+                    if step.status == StepStatus.PENDING:
+                        current_step = step
+                        break
+                
+                if current_step and self._can_user_action_step(user, current_step):
+                    pending_instances.append(instance)
         
         return pending_instances
     
@@ -318,3 +334,103 @@ class ApprovalsService:
             return user.role == "Director"
 
         return False
+    
+    def proxy_approve_director_step(self, instance_id: str, step_id: str, comment: Optional[str] = None) -> ApprovalInstance:
+        """
+        Allow RO to approve Director step on behalf of Director with explanation.
+        
+        This is used when RO needs to approve the Director step (e.g., Director is unavailable).
+        """
+        instance = self.get_by_id(instance_id)
+        if not instance:
+            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Approval not found"})
+        
+        step = self.db.query(ApprovalStep).filter(
+            and_(
+                ApprovalStep.id == step_id,
+                ApprovalStep.instance_id == instance_id,
+            )
+        ).first()
+        
+        if not step:
+            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Step not found"})
+        
+        if step.step_name != "Director":
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Only Director steps can be proxy-approved by RO"}
+            )
+        
+        if step.status != StepStatus.PENDING:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Step is not pending"}
+            )
+        
+        user = self._get_user()
+        if not user or user.role != "RO":
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "UNAUTHORIZED_ROLE", "message": "Only ROs can proxy-approve Director steps"},
+            )
+        
+        # Check that RO step is already approved
+        ro_step = next((s for s in instance.steps if s.step_name == "RO"), None)
+        if not ro_step or ro_step.status != StepStatus.APPROVED:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "RO step must be approved before proxy-approving Director step"},
+            )
+        
+        # Check that this is the current step
+        current_step = self._get_current_step(instance)
+        if not current_step or current_step.id != step.id:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Only the current step can be proxy-approved"},
+            )
+        
+        if not comment or not comment.strip():
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "VALIDATION_ERROR", "message": "Explanation is required for proxy approval"},
+            )
+        
+        # Update step - mark as approved by RO (proxy)
+        step.status = StepStatus.APPROVED
+        step.actioned_at = datetime.utcnow()
+        step.actioned_by = self.current_user.object_id
+        step.comment = f"[Proxy-approved by RO] {comment}"
+        
+        # Record action
+        action = ApprovalAction(
+            tenant_id=self.current_user.tenant_id,
+            instance_id=instance_id,
+            step_id=step_id,
+            action="proxy_approve",
+            performed_by=self.current_user.object_id,
+            comment=comment,
+        )
+        self.db.add(action)
+        
+        # Check if all steps are complete
+        all_done = all(
+            s.status in (StepStatus.APPROVED, StepStatus.SKIPPED)
+            for s in instance.steps
+        )
+        
+        if all_done:
+            instance.status = ApprovalStatus.APPROVED
+        
+        self.db.commit()
+        self.db.refresh(instance)
+        
+        log_audit(
+            self.db, self.current_user,
+            action="proxy_approve",
+            entity_type="ApprovalStep",
+            entity_id=step_id,
+            reason=comment,
+        )
+        
+        return instance

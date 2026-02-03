@@ -37,6 +37,9 @@ class ApprovalInstanceResponse(BaseModel):
 class ActionRequest(BaseModel):
     comment: Optional[str] = None
 
+class ProxyApproveRequest(BaseModel):
+    comment: str  # Required for proxy approval
+
 
 def _to_response(instance) -> ApprovalInstanceResponse:
     return ApprovalInstanceResponse(
@@ -134,4 +137,25 @@ async def reject_step(
     """
     service = ApprovalsService(db, current_user)
     instance = service.reject_step(instance_id, step_id, data.comment)
+    return _to_response(instance)
+
+
+@router.post("/{instance_id}/steps/{step_id}/proxy-approve", response_model=ApprovalInstanceResponse)
+async def proxy_approve_director_step(
+    instance_id: str,
+    step_id: str,
+    data: ProxyApproveRequest,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(require_roles(UserRole.RO)),
+):
+    """
+    Allow RO to proxy-approve Director step with explanation.
+    
+    This allows RO to approve on behalf of Director when Director is unavailable.
+    Explanation is required.
+    
+    Accessible to: RO only
+    """
+    service = ApprovalsService(db, current_user)
+    instance = service.proxy_approve_director_step(instance_id, step_id, data.comment)
     return _to_response(instance)
