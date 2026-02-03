@@ -2,7 +2,7 @@
  * Supply Planning Page
  * 
  * RO role: Create and edit supply lines (resource availability)
- * Finance/Admin: Read-only view
+ * Finance/Admin/PM: Read-only view
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -40,6 +40,7 @@ import { lookupsApi, Resource } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
+import { ReadOnlyBanner } from '../components/ReadOnlyBanner';
 
 const useStyles = makeStyles({
   container: {
@@ -186,6 +187,7 @@ export const Supply: React.FC = () => {
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
   const canEdit = user?.role === 'RO' || user?.role === 'Finance';
+  const isReadOnly = user?.role === 'PM' || user?.role === 'Admin';
   
   if (loading) {
     return (
@@ -278,6 +280,10 @@ export const Supply: React.FC = () => {
         <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
           <MessageBarBody>Period is locked. Editing is disabled.</MessageBarBody>
         </MessageBar>
+      )}
+      
+      {isReadOnly && !isLocked && (
+        <ReadOnlyBanner message="Only ROs and Finance can edit supply lines. You can view all supply data." />
       )}
       
       {error && (
