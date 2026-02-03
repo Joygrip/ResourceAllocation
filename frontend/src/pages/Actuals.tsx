@@ -47,6 +47,7 @@ import { lookupsApi, Project, Resource } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { ApiError } from '../types';
+import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
   container: {
@@ -96,6 +97,7 @@ const useStyles = makeStyles({
 export const Actuals: React.FC = () => {
   const styles = useStyles();
   const { showSuccess, showError, showApiError } = useToast();
+  const { user } = useAuth();
   
   const [actuals, setActuals] = useState<ActualLine[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -105,6 +107,9 @@ export const Actuals: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [overLimitIds, setOverLimitIds] = useState<string[]>([]);
+  
+  const isEmployee = user?.role === 'Employee';
+  const isRO = user?.role === 'RO';
   
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -159,7 +164,12 @@ export const Actuals: React.FC = () => {
   
   const loadActuals = async () => {
     try {
-      const data = await actualsApi.getActualLines(selectedPeriod);
+      const currentPeriod = periods.find(p => p.id === selectedPeriod);
+      // Employee role uses /actuals/my to see their own lines (filtered by year/month if period selected)
+      // Other roles (RO, Finance, Admin) use /actuals?year=X&month=Y to see all lines
+      const data = isEmployee 
+        ? await actualsApi.getMyActuals(currentPeriod?.year, currentPeriod?.month)
+        : await actualsApi.getActualLines(undefined, currentPeriod?.year, currentPeriod?.month);
       setActuals(data);
       setOverLimitIds([]);
     } catch (err: unknown) {
@@ -469,18 +479,24 @@ export const Actuals: React.FC = () => {
                     <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS }}>
                       {!a.employee_signed_at && !isLocked && (
                         <>
-                          <Button
-                            icon={<Signature24Regular />}
-                            appearance="subtle"
-                            title="Sign"
-                            onClick={() => openSignDialog(a, false)}
-                          />
-                          <Button
-                            icon={<Signature24Regular />}
-                            appearance="subtle"
-                            title="Proxy Sign (RO)"
-                            onClick={() => openSignDialog(a, true)}
-                          />
+                          {/* Employee can sign their own actuals */}
+                          {isEmployee && (
+                            <Button
+                              icon={<Signature24Regular />}
+                              appearance="subtle"
+                              title="Sign"
+                              onClick={() => openSignDialog(a, false)}
+                            />
+                          )}
+                          {/* RO can proxy-sign for absent employees */}
+                          {isRO && (
+                            <Button
+                              icon={<Signature24Regular />}
+                              appearance="subtle"
+                              title="Proxy Sign (RO)"
+                              onClick={() => openSignDialog(a, true)}
+                            />
+                          )}
                         </>
                       )}
                       {!a.employee_signed_at && !isLocked && (

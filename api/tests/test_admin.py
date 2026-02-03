@@ -24,6 +24,37 @@ def test_finance_cannot_create_department(client, finance_headers, db):
     assert response.status_code == 403
 
 
+def test_finance_can_create_project(client, finance_headers, db):
+    """Finance can create projects."""
+    # Finance can create project
+    response = client.post(
+        "/admin/projects",
+        json={
+            "code": "FIN-001",
+            "name": "Finance Project",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Finance Project"
+    assert response.json()["code"] == "FIN-001"
+
+
+def test_pm_cannot_create_project(client, pm_headers, db):
+    """PM cannot create projects (read-only)."""
+    response = client.post(
+        "/admin/projects",
+        json={
+            "name": "PM Project",
+            "investment_name": "PM-001",
+            "department_id": "dept-1",
+            "status": "active",
+        },
+        headers=pm_headers,
+    )
+    assert response.status_code == 403
+
+
 def test_finance_can_read_departments(client, admin_headers, finance_headers, db):
     """Finance can read departments."""
     # Create as admin

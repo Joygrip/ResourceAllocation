@@ -43,13 +43,21 @@ export interface ResourceMonthlyTotal {
 }
 
 export const actualsApi = {
-  async getActualLines(periodId?: string): Promise<ActualLine[]> {
-    const params = periodId ? `?period_id=${periodId}` : '';
-    return apiClient.get<ActualLine[]>(`/actuals${params}`);
+  async getActualLines(periodId?: string, year?: number, month?: number): Promise<ActualLine[]> {
+    const params = new URLSearchParams();
+    if (periodId) params.append('period_id', periodId);
+    if (year) params.append('year', String(year));
+    if (month) params.append('month', String(month));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<ActualLine[]>(`/actuals${query}`);
   },
   
-  async getMyActuals(): Promise<ActualLine[]> {
-    return apiClient.get<ActualLine[]>('/actuals/my');
+  async getMyActuals(year?: number, month?: number): Promise<ActualLine[]> {
+    const params = new URLSearchParams();
+    if (year) params.append('year', String(year));
+    if (month) params.append('month', String(month));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<ActualLine[]>(`/actuals/my${query}`);
   },
   
   async getResourceMonthlyTotal(resourceId: string, year: number, month: number): Promise<ResourceMonthlyTotal> {

@@ -28,6 +28,8 @@ READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
 PLANNING_READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO)
 # Allowed roles for write access
 WRITE_ROLES = (UserRole.ADMIN,)
+# Allowed roles for project write access (Finance can manage projects)
+PROJECT_WRITE_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
 
 
 # ============== DEPARTMENTS ==============
@@ -238,9 +240,9 @@ async def get_project(
 async def create_project(
     data: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PROJECT_WRITE_ROLES)),
 ):
-    """Create a new project."""
+    """Create a new project. Accessible to Admin, Finance."""
     project = Project(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(project)
     db.commit()
@@ -254,9 +256,9 @@ async def update_project(
     project_id: str,
     data: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PROJECT_WRITE_ROLES)),
 ):
-    """Update a project."""
+    """Update a project. Accessible to Admin, Finance."""
     project = db.query(Project).filter(
         and_(Project.id == project_id, Project.tenant_id == current_user.tenant_id)
     ).first()
@@ -279,9 +281,9 @@ async def update_project(
 async def delete_project(
     project_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*PROJECT_WRITE_ROLES)),
 ):
-    """Soft delete a project."""
+    """Soft delete a project. Accessible to Admin, Finance."""
     project = db.query(Project).filter(
         and_(Project.id == project_id, Project.tenant_id == current_user.tenant_id)
     ).first()

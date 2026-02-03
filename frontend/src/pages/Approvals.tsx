@@ -35,6 +35,7 @@ import {
   CheckmarkCircle24Regular,
   DismissCircle24Regular,
   ArrowForward24Regular,
+  ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
 import { approvalsApi, ApprovalInstance, ApprovalStep } from '../api/approvals';
 import { useToast } from '../hooks/useToast';
@@ -165,6 +166,7 @@ export const Approvals: React.FC = () => {
     if (!selectedApproval || !selectedStep) return;
     
     try {
+      setLoading(true);
       if (actionType === 'approve') {
         await approvalsApi.approveStep(selectedApproval.id, selectedStep.id, comment || undefined);
         showSuccess('Approved successfully');
@@ -174,9 +176,15 @@ export const Approvals: React.FC = () => {
       }
       
       setIsDialogOpen(false);
-      loadApprovals();
+      setSelectedApproval(null);
+      setSelectedStep(null);
+      setComment('');
+      // Reload approvals to get updated state
+      await loadApprovals();
     } catch (err: unknown) {
       showApiError(err as Error, 'Failed to update approval');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -195,8 +203,18 @@ export const Approvals: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title1>Approvals</Title1>
-        <Body1>Review and action pending approvals</Body1>
+        <div>
+          <Title1>Approvals</Title1>
+          <Body1>Review and action pending approvals</Body1>
+        </div>
+        <Button
+          icon={<ArrowClockwise24Regular />}
+          appearance="subtle"
+          onClick={loadApprovals}
+          title="Refresh"
+        >
+          Refresh
+        </Button>
       </div>
       
       {error && (
