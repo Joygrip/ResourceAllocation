@@ -94,6 +94,8 @@ const useStyles = makeStyles({
   },
 });
 
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 export const Actuals: React.FC = () => {
   const styles = useStyles();
   const { showSuccess, showError, showApiError } = useToast();
@@ -118,12 +120,10 @@ export const Actuals: React.FC = () => {
   const [proxyReason, setProxyReason] = useState('');
   const [isProxySign, setIsProxySign] = useState(false);
   
-  const [formData, setFormData] = useState<CreateActualLine>({
+  const [formData, setFormData] = useState<Omit<CreateActualLine, 'year' | 'month'>>({
     period_id: '',
     resource_id: '',
     project_id: '',
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
     planned_fte_percent: 0,
     actual_fte_percent: 50,
   });
@@ -178,11 +178,26 @@ export const Actuals: React.FC = () => {
   };
   
   const handleCreate = async () => {
+    const period = periods.find(p => p.id === selectedPeriod);
+    if (!period) {
+      showError('No period selected', 'Please select a period first.');
+      return;
+    }
+    if (!formData.resource_id) {
+      showError('Missing resource', 'Please select a resource.');
+      return;
+    }
+    if (!formData.project_id) {
+      showError('Missing project', 'Please select a project.');
+      return;
+    }
     try {
       await actualsApi.createActualLine({
         ...formData,
         period_id: selectedPeriod,
-      });
+        year: period.year,
+        month: period.month,
+      } as CreateActualLine);
       showSuccess('Actual line created');
       setIsDialogOpen(false);
       loadActuals();
@@ -192,8 +207,6 @@ export const Actuals: React.FC = () => {
         period_id: selectedPeriod,
         resource_id: '',
         project_id: '',
-        year: new Date().getFullYear(),
-        month: new Date().getMonth() + 1,
         planned_fte_percent: 0,
         actual_fte_percent: 50,
       });
@@ -306,6 +319,15 @@ export const Actuals: React.FC = () => {
                 <DialogBody>
                   <DialogTitle>Add Actual Line</DialogTitle>
                   <DialogContent>
+                    {currentPeriod && (
+                      <div className={styles.formField} style={{ marginBottom: tokens.spacingVerticalM }}>
+                        <label>Period</label>
+                        <Body1 style={{ padding: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                          {monthNames[currentPeriod.month - 1]} {currentPeriod.year} ({currentPeriod.status})
+                        </Body1>
+                      </div>
+                    )}
+                    
                     <div className={styles.formField}>
                       <label>Resource</label>
                       <Select
@@ -330,27 +352,6 @@ export const Actuals: React.FC = () => {
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </Select>
-                    </div>
-                    
-                    <div className={styles.formRow} style={{ marginTop: tokens.spacingVerticalM }}>
-                      <div className={styles.formField}>
-                        <label>Year</label>
-                        <Input
-                          type="number"
-                          value={String(formData.year)}
-                          onChange={(_, data) => setFormData({ ...formData, year: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>Month</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={12}
-                          value={String(formData.month)}
-                          onChange={(_, data) => setFormData({ ...formData, month: parseInt(data.value) })}
-                        />
-                      </div>
                     </div>
                     
                     <div className={styles.formRow} style={{ marginTop: tokens.spacingVerticalM }}>
