@@ -30,9 +30,12 @@ import {
   DialogActions,
   MessageBar,
   MessageBarBody,
+  TabList,
+  Tab,
+  Title3,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular, CalendarRegular } from '@fluentui/react-icons';
-import { planningApi, DemandLine, CreateDemandLine } from '../api/planning';
+import { Add24Regular, Delete24Regular, CalendarRegular, ChartMultipleRegular } from '@fluentui/react-icons';
+import { planningApi, DemandLine, CreateDemandLine, PlanningInsights } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { lookupsApi, Project, Resource, Placeholder } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
@@ -99,11 +102,15 @@ export const Demand: React.FC = () => {
   const [formData, setFormData] = useState<CreateDemandLine>({
     period_id: '',
     project_id: '',
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
     fte_percent: 50,
   });
   const [useResource, setUseResource] = useState(true);
+  const [activeTab, setActiveTab] = useState<'lines' | 'insights'>('lines');
+  const [insights, setInsights] = useState<PlanningInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const currentPeriod = periods.find(p => p.id === selectedPeriod);
   
   useEffect(() => {
     loadInitialData();
@@ -112,8 +119,30 @@ export const Demand: React.FC = () => {
   useEffect(() => {
     if (selectedPeriod) {
       loadDemands();
+      if (activeTab === 'insights') {
+        loadInsights();
+      }
     }
   }, [selectedPeriod]);
+  
+  useEffect(() => {
+    if (activeTab === 'insights' && selectedPeriod) {
+      loadInsights();
+    }
+  }, [activeTab, selectedPeriod]);
+  
+  const loadInsights = async () => {
+    if (!selectedPeriod) return;
+    try {
+      setInsightsLoading(true);
+      const data = await planningApi.getInsights(selectedPeriod);
+      setInsights(data);
+    } catch (err: unknown) {
+      showApiError(err as Error, 'Failed to load insights');
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
   
   const loadInitialData = async () => {
     try {
@@ -169,15 +198,16 @@ export const Demand: React.FC = () => {
     }
     try {
       const data: CreateDemandLine = {
-        ...formData,
         period_id: selectedPeriod,
+        project_id: formData.project_id,
+        fte_percent: formData.fte_percent,
       };
       
       // XOR: either resource or placeholder
       if (useResource) {
-        delete data.placeholder_id;
+        data.resource_id = formData.resource_id;
       } else {
-        delete data.resource_id;
+        data.placeholder_id = formData.placeholder_id;
       }
       
       await planningApi.createDemandLine(data);
@@ -189,8 +219,6 @@ export const Demand: React.FC = () => {
       setFormData({
         period_id: selectedPeriod,
         project_id: '',
-        year: new Date().getFullYear(),
-        month: new Date().getMonth() + 1,
         fte_percent: 50,
       });
     } catch (err: unknown) {
@@ -214,7 +242,6 @@ export const Demand: React.FC = () => {
   const getResourceName = (id?: string) => id ? resources.find(r => r.id === id)?.display_name || 'Unknown' : '-';
   const getPlaceholderName = (id?: string) => id ? placeholders.find(p => p.id === id)?.name || 'Unknown' : '-';
   
-  const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
   const canEdit = user?.role === 'PM' || user?.role === 'Finance';
   const isReadOnly = !canEdit && user?.role === 'Admin';
@@ -251,6 +278,14 @@ export const Demand: React.FC = () => {
                 <DialogBody>
                   <DialogTitle>Add Demand Line</DialogTitle>
                   <DialogContent>
+                    {currentPeriod && (
+                      <div className={styles.formField} style={{ marginBottom: tokens.spacingVerticalM }}>
+                        <label>Period</label>
+                        <Body1 style={{ padding: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                          {monthNames[currentPeriod.month - 1]} {currentPeriod.year} ({currentPeriod.status})
+                        </Body1>
+                      </div>
+                    )}
                     <div className={styles.formField}>
                       <label>Project</label>
                       <Select
@@ -314,36 +349,16 @@ export const Demand: React.FC = () => {
                       </div>
                     )}
                     
-                    <div className={styles.formRow} style={{ marginTop: tokens.spacingVerticalM }}>
-                      <div className={styles.formField}>
-                        <label>Year</label>
-                        <Input
-                          type="number"
-                          value={String(formData.year)}
-                          onChange={(_, data) => setFormData({ ...formData, year: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>Month</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={12}
-                          value={String(formData.month)}
-                          onChange={(_, data) => setFormData({ ...formData, month: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>FTE %</label>
-                        <Input
-                          type="number"
-                          min={5}
-                          max={100}
-                          step={5}
-                          value={String(formData.fte_percent)}
-                          onChange={(_, data) => setFormData({ ...formData, fte_percent: parseInt(data.value) })}
-                        />
-                      </div>
+                    <div className={styles.formField} style={{ marginTop: tokens.spacingVerticalM }}>
+                      <label>FTE %</label>
+                      <Select
+                        value={String(formData.fte_percent)}
+                        onChange={(_, data) => setFormData({ ...formData, fte_percent: parseInt(data.value || '50') })}
+                      >
+                        {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(val => (
+                          <option key={val} value={val}>{val}%</option>
+                        ))}
+                      </Select>
                     </div>
                   </DialogContent>
                   <DialogActions>
@@ -371,11 +386,19 @@ export const Demand: React.FC = () => {
       )}
       
       {error && (
-        <MessageBar intent="error" style={{ marginBottom: tokens.spacingVerticalM }}>
-          <MessageBarBody>{error}</MessageBarBody>
-        </MessageBar>
+        <StatusBanner intent="danger" title="Error" message={error} />
       )}
-      
+
+      <TabList 
+        selectedValue={activeTab} 
+        onTabSelect={(_, data) => setActiveTab(data.value as 'lines' | 'insights')}
+        style={{ marginBottom: tokens.spacingVerticalL }}
+      >
+        <Tab value="lines">Demand Lines</Tab>
+        <Tab value="insights" icon={<ChartMultipleRegular />}>Insights</Tab>
+      </TabList>
+
+      {activeTab === 'lines' && (
       <Card className={styles.card}>
         <CardHeader header={<Body1><strong>Demand Lines ({demands.length})</strong></Body1>} />
         
@@ -443,6 +466,101 @@ export const Demand: React.FC = () => {
           </TableBody>
         </Table>
       </Card>
+      )}
+      
+      {activeTab === 'insights' && (
+        <Card className={styles.card}>
+          <CardHeader header={<Title3>Planning Insights</Title3>} />
+          {insightsLoading ? (
+            <LoadingState message="Loading insights..." />
+          ) : insights ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: tokens.spacingHorizontalM, marginBottom: tokens.spacingVerticalL }}>
+                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Demand</Body1>
+                  <Title3>{insights.stats.total_demand}%</Title3>
+                </div>
+                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Supply</Body1>
+                  <Title3>{insights.stats.total_supply}%</Title3>
+                </div>
+                <div style={{ padding: tokens.spacingHorizontalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+                  <Body1 style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Total Gap</Body1>
+                  <Title3 style={{ color: insights.stats.total_gap < 0 ? tokens.colorPaletteRedBackground3 : tokens.colorPaletteGreenBackground3 }}>
+                    {insights.stats.total_gap > 0 ? '+' : ''}{insights.stats.total_gap}%
+                  </Title3>
+                </div>
+              </div>
+              
+              <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Gaps by Cost Center</Title3>
+              <Table className={styles.table}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeaderCell>Cost Center</TableHeaderCell>
+                    <TableHeaderCell>Demand</TableHeaderCell>
+                    <TableHeaderCell>Supply</TableHeaderCell>
+                    <TableHeaderCell>Gap</TableHeaderCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {insights.by_cost_center.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
+                        <Body1>No cost center data available</Body1>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    insights.by_cost_center.map((cc) => (
+                      <TableRow key={cc.cost_center_id}>
+                        <TableCell>{cc.cost_center_name}</TableCell>
+                        <TableCell>{cc.demand_total}%</TableCell>
+                        <TableCell>{cc.supply_total}%</TableCell>
+                        <TableCell>
+                          <Badge appearance={cc.gap < 0 ? 'filled' : 'outline'} color={cc.gap < 0 ? 'danger' : 'success'}>
+                            {cc.gap > 0 ? '+' : ''}{cc.gap}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              
+              {insights.orphan_demand.length > 0 && (
+                <>
+                  <Title3 style={{ marginTop: tokens.spacingVerticalXL, marginBottom: tokens.spacingVerticalM }}>Orphan Demand</Title3>
+                  <Table className={styles.table}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHeaderCell>Project</TableHeaderCell>
+                        <TableHeaderCell>Resource/Placeholder</TableHeaderCell>
+                        <TableHeaderCell>FTE %</TableHeaderCell>
+                        <TableHeaderCell>Reason</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {insights.orphan_demand.map((orphan) => (
+                        <TableRow key={orphan.demand_line_id}>
+                          <TableCell>{orphan.project_name}</TableCell>
+                          <TableCell>{orphan.resource_or_placeholder}</TableCell>
+                          <TableCell>{orphan.fte_percent}%</TableCell>
+                          <TableCell>{orphan.reason}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+            </>
+          ) : (
+            <EmptyState
+              icon={<ChartMultipleRegular />}
+              title="No Insights Available"
+              description="Select a period to view planning insights."
+            />
+          )}
+        </Card>
+      )}
     </div>
   );
 };

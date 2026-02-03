@@ -1,7 +1,7 @@
 /**
  * Enterprise AppShell with MatKat branding
  */
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   makeStyles,
@@ -38,7 +38,6 @@ import {
 } from '@fluentui/react-icons';
 import { useAuth } from '../auth/AuthProvider';
 import { config } from '../config';
-import { periodsApi, Period } from '../api/periods';
 
 const Home = bundleIcon(HomeFilled, HomeRegular);
 const Demand = bundleIcon(CalendarFilled, CalendarRegular);
@@ -200,9 +199,6 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
   },
-  periodSelector: {
-    minWidth: '180px',
-  },
   content: {
     flex: 1,
     overflow: 'auto',
@@ -263,17 +259,10 @@ const pageTitles: Record<string, string> = {
   '/admin': 'Administration',
 };
 
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 export function AppShell({ children }: { children: ReactNode }) {
   const styles = useStyles();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const [periods, setPeriods] = useState<Period[]>([]);
-  const [currentPeriod, setCurrentPeriod] = useState<string>('');
 
   const visibleNavItems = navItems.filter((item) => {
     if (!item.roles) return true;
@@ -281,23 +270,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
 
   const pageTitle = pageTitles[location.pathname] || 'MatKat 2.0';
-
-  useEffect(() => {
-    loadPeriods();
-  }, []);
-
-  const loadPeriods = async () => {
-    try {
-      const data = await periodsApi.list();
-      setPeriods(data);
-      if (data.length > 0) {
-        const openPeriod = data.find((p) => p.status === 'open');
-        setCurrentPeriod(openPeriod?.id || data[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load periods:', error);
-    }
-  };
 
 
   return (
@@ -367,24 +339,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className={styles.headerLeft}>
             <h1 className={styles.pageTitle}>{pageTitle}</h1>
           </div>
-          <div className={styles.headerRight}>
-            {periods.length > 0 && (
-              <Select
-                className={styles.periodSelector}
-                value={currentPeriod}
-                onChange={(_, data) => setCurrentPeriod(data.value || '')}
-              >
-                {periods.map((period) => (
-                  <option key={period.id} value={period.id}>
-                    {monthNames[period.month - 1]} {period.year} ({period.status})
-                  </option>
-                ))}
-              </Select>
-            )}
-            <Tooltip content={`Tenant: ${user?.tenant_id}`} relationship="description">
-              <Badge appearance="outline">{user?.tenant_id}</Badge>
-            </Tooltip>
-          </div>
+                <div className={styles.headerRight}>
+                  <Tooltip content={`Tenant: ${user?.tenant_id}`} relationship="description">
+                    <Badge appearance="outline">{user?.tenant_id}</Badge>
+                  </Tooltip>
+                </div>
         </header>
 
         <div className={styles.content}>

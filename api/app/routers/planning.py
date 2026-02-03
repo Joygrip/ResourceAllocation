@@ -1,16 +1,18 @@
 """Planning endpoints - Demand and Supply lines."""
-from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
 
 from api.app.db.engine import get_db
 from api.app.auth.dependencies import get_current_user, require_roles, CurrentUser
-from api.app.models.core import UserRole
+from api.app.models.core import UserRole, Period, CostCenter, Resource, Placeholder, Project
 from api.app.schemas.planning import (
     DemandLineCreate, DemandLineUpdate, DemandLineResponse,
     SupplyLineCreate, SupplyLineUpdate, SupplyLineResponse,
 )
 from api.app.services.planning import DemandService, SupplyService
+from api.app.models.planning import DemandLine, SupplyLine
 
 router = APIRouter(tags=["Planning"])
 
@@ -18,8 +20,9 @@ router = APIRouter(tags=["Planning"])
 
 @router.get("/demand-lines", response_model=list[DemandLineResponse])
 async def list_demand_lines(
-    year: Optional[int] = Query(None, description="Filter by year"),
-    month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month"),
+    period_id: Optional[str] = Query(None, description="Filter by period ID"),
+    year: Optional[int] = Query(None, description="Filter by year (deprecated, use period_id)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
         UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
@@ -28,10 +31,26 @@ async def list_demand_lines(
     """
     List demand lines. Filtered by tenant.
     
+    Prefer period_id over year/month for filtering.
+    
     Accessible to: Admin, Finance (read-only), PM, RO (read-only)
     """
     service = DemandService(db, current_user)
-    lines = service.get_all(year, month)
+    if period_id:
+        # Filter by period_id
+        from api.app.models.core import Period
+        period = db.query(Period).filter(
+            and_(
+                Period.id == period_id,
+                Period.tenant_id == current_user.tenant_id,
+            )
+        ).first()
+        if period:
+            lines = service.get_all(period.year, period.month)
+        else:
+            lines = []
+    else:
+        lines = service.get_all(year, month)
     
     # Enrich with names
     result = []
@@ -112,11 +131,12 @@ async def create_demand_line(
     service = DemandService(db, current_user)
     line = service.create(
         project_id=data.project_id,
-        year=data.year,
-        month=data.month,
+        period_id=data.period_id,
         fte_percent=data.fte_percent,
         resource_id=data.resource_id,
         placeholder_id=data.placeholder_id,
+        year=data.year,
+        month=data.month,
     )
     
     return DemandLineResponse(
@@ -192,8 +212,9 @@ async def delete_demand_line(
 
 @router.get("/supply-lines", response_model=list[SupplyLineResponse])
 async def list_supply_lines(
-    year: Optional[int] = Query(None, description="Filter by year"),
-    month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month"),
+    period_id: Optional[str] = Query(None, description="Filter by period ID"),
+    year: Optional[int] = Query(None, description="Filter by year (deprecated, use period_id)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (deprecated, use period_id)"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(
         UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
@@ -202,10 +223,26 @@ async def list_supply_lines(
     """
     List supply lines. Filtered by tenant.
     
+    Prefer period_id over year/month for filtering.
+    
     Accessible to: Admin, Finance (read-only), PM (read-only), RO
     """
     service = SupplyService(db, current_user)
-    lines = service.get_all(year, month)
+    if period_id:
+        # Filter by period_id
+        from api.app.models.core import Period
+        period = db.query(Period).filter(
+            and_(
+                Period.id == period_id,
+                Period.tenant_id == current_user.tenant_id,
+            )
+        ).first()
+        if period:
+            lines = service.get_all(period.year, period.month)
+        else:
+            lines = []
+    else:
+        lines = service.get_all(year, month)
     
     result = []
     for line in lines:
@@ -276,9 +313,10 @@ async def create_supply_line(
     service = SupplyService(db, current_user)
     line = service.create(
         resource_id=data.resource_id,
+        period_id=data.period_id,
+        fte_percent=data.fte_percent,
         year=data.year,
         month=data.month,
-        fte_percent=data.fte_percent,
     )
     
     return SupplyLineResponse(
@@ -340,3 +378,160 @@ async def delete_supply_line(
     service = SupplyService(db, current_user)
     service.delete(supply_id)
     return {"message": "Supply line deleted"}
+
+
+# ============== PLANNING INSIGHTS ==============
+
+@router.get("/insights")
+async def get_planning_insights(
+    period_id: str = Query(..., description="Period ID"),
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(require_roles(
+        UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO
+    )),
+):
+    """
+    Get planning insights for a period: demand vs supply gaps by cost center.
+    
+    Shows:
+    - Total demand, supply, and gap percentages
+    - Gaps by cost center
+    - Orphan demand (placeholders, inactive resources)
+    
+    Accessible to: Admin, Finance, PM, RO
+    """
+    # Verify period exists
+    period = db.query(Period).filter(
+        and_(
+            Period.id == period_id,
+            Period.tenant_id == current_user.tenant_id,
+        )
+    ).first()
+    
+    if not period:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Period not found"}
+        )
+    
+    # Get all demand lines for this period
+    demands = db.query(DemandLine).filter(
+        and_(
+            DemandLine.tenant_id == current_user.tenant_id,
+            DemandLine.period_id == period_id,
+        )
+    ).all()
+    
+    # Get all supply lines for this period
+    supplies = db.query(SupplyLine).filter(
+        and_(
+            SupplyLine.tenant_id == current_user.tenant_id,
+            SupplyLine.period_id == period_id,
+        )
+    ).all()
+    
+    # Aggregate by cost center
+    demand_by_cc: Dict[str, Dict[str, Any]] = {}
+    supply_by_cc: Dict[str, Dict[str, Any]] = {}
+    
+    total_demand = 0
+    total_supply = 0
+    
+    # Process demand lines
+    for d in demands:
+        total_demand += d.fte_percent
+        
+        if d.resource_id:
+            resource = db.query(Resource).filter(Resource.id == d.resource_id).first()
+            if resource and resource.cost_center_id:
+                cc_id = resource.cost_center_id
+                if cc_id not in demand_by_cc:
+                    cost_center = db.query(CostCenter).filter(CostCenter.id == cc_id).first()
+                    demand_by_cc[cc_id] = {
+                        "cost_center_id": cc_id,
+                        "cost_center_name": cost_center.name if cost_center else "Unknown",
+                        "demand_total": 0,
+                        "supply_total": 0,
+                    }
+                demand_by_cc[cc_id]["demand_total"] += d.fte_percent
+    
+    # Process supply lines
+    for s in supplies:
+        total_supply += s.fte_percent
+        
+        resource = db.query(Resource).filter(Resource.id == s.resource_id).first()
+        if resource and resource.cost_center_id:
+            cc_id = resource.cost_center_id
+            if cc_id not in supply_by_cc:
+                cost_center = db.query(CostCenter).filter(CostCenter.id == cc_id).first()
+                supply_by_cc[cc_id] = {
+                    "cost_center_id": cc_id,
+                    "cost_center_name": cost_center.name if cost_center else "Unknown",
+                    "demand_total": 0,
+                    "supply_total": 0,
+                }
+            supply_by_cc[cc_id]["supply_total"] += s.fte_percent
+    
+    # Merge and calculate gaps
+    all_cc_ids = set(demand_by_cc.keys()) | set(supply_by_cc.keys())
+    by_cost_center = []
+    
+    for cc_id in all_cc_ids:
+        cc_data = demand_by_cc.get(cc_id, supply_by_cc.get(cc_id, {}))
+        if not cc_data:
+            continue
+        
+        demand_total = cc_data.get("demand_total", 0)
+        supply_total = cc_data.get("supply_total", 0)
+        gap = supply_total - demand_total
+        
+        by_cost_center.append({
+            "cost_center_id": cc_id,
+            "cost_center_name": cc_data.get("cost_center_name", "Unknown"),
+            "demand_total": demand_total,
+            "supply_total": supply_total,
+            "gap": gap,
+        })
+    
+    # Find orphan demand (placeholders or inactive resources)
+    orphan_demands = []
+    for d in demands:
+        if d.placeholder_id:
+            placeholder = db.query(Placeholder).filter(Placeholder.id == d.placeholder_id).first()
+            project = db.query(Project).filter(Project.id == d.project_id).first()
+            orphan_demands.append({
+                "demand_line_id": d.id,
+                "project_name": project.name if project else "Unknown",
+                "resource_or_placeholder": placeholder.name if placeholder else "Unknown",
+                "fte_percent": d.fte_percent,
+                "reason": "Placeholder (TBD)",
+            })
+        elif d.resource_id:
+            resource = db.query(Resource).filter(Resource.id == d.resource_id).first()
+            if resource and (not resource.is_active or resource.is_placeholder):
+                project = db.query(Project).filter(Project.id == d.project_id).first()
+                orphan_demands.append({
+                    "demand_line_id": d.id,
+                    "project_name": project.name if project else "Unknown",
+                    "resource_or_placeholder": resource.display_name if resource else "Unknown",
+                    "fte_percent": d.fte_percent,
+                    "reason": "Inactive resource" if not resource.is_active else "Placeholder resource",
+                })
+    
+    return {
+        "period": {
+            "id": period.id,
+            "year": period.year,
+            "month": period.month,
+            "status": period.status.value if hasattr(period.status, 'value') else str(period.status),
+        },
+        "by_cost_center": sorted(by_cost_center, key=lambda x: x["cost_center_name"]),
+        "orphan_demand": orphan_demands,
+        "stats": {
+            "total_demand": total_demand,
+            "total_supply": total_supply,
+            "total_gap": total_supply - total_demand,
+            "gaps_count": len([x for x in by_cost_center if x["gap"] != 0]),
+            "orphans_count": len(orphan_demands),
+        }
+    }

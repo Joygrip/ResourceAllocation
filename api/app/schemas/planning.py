@@ -23,11 +23,13 @@ class FTEValidatorMixin:
 
 class DemandLineBase(BaseModel):
     project_id: str
-    year: int
-    month: int
+    period_id: str
     fte_percent: int
     resource_id: Optional[str] = None
     placeholder_id: Optional[str] = None
+    # year/month are derived from period_id server-side
+    year: Optional[int] = None
+    month: Optional[int] = None
 
 
 class DemandLineCreate(DemandLineBase, FTEValidatorMixin):
@@ -70,9 +72,11 @@ class DemandLineResponse(DemandLineBase):
 
 class SupplyLineBase(BaseModel):
     resource_id: str
-    year: int
-    month: int
+    period_id: str
     fte_percent: int
+    # year/month are derived from period_id server-side
+    year: Optional[int] = None
+    month: Optional[int] = None
 
 
 class SupplyLineCreate(SupplyLineBase, FTEValidatorMixin):

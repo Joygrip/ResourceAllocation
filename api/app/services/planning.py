@@ -96,15 +96,28 @@ class DemandService:
     def create(
         self,
         project_id: str,
-        year: int,
-        month: int,
+        period_id: str,
         fte_percent: int,
         resource_id: Optional[str] = None,
         placeholder_id: Optional[str] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
     ) -> DemandLine:
-        """Create a new demand line."""
-        # Validate period is open
-        period = self._check_period_open(year, month)
+        """Create a new demand line. Year/month are derived from period_id."""
+        # Get period and validate it's open
+        period = self._get_period_by_id(period_id)
+        year = period.year
+        month = period.month
+        
+        # If year/month are provided, validate they match the period
+        if (year is not None and year != period.year) or (month is not None and month != period.month):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": ErrorCode.VALIDATION_ERROR,
+                    "message": f"Year/month mismatch: period {period.year}-{period.month:02d} does not match provided year/month",
+                }
+            )
         
         # Validate XOR constraint
         if resource_id and placeholder_id:
@@ -311,6 +324,35 @@ class SupplyService:
         self.db = db
         self.current_user = current_user
     
+    def _get_period_by_id(self, period_id: str) -> Period:
+        """Get period by ID and validate it's open."""
+        period = self.db.query(Period).filter(
+            and_(
+                Period.id == period_id,
+                Period.tenant_id == self.current_user.tenant_id,
+            )
+        ).first()
+        
+        if not period:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "NOT_FOUND",
+                    "message": f"Period not found.",
+                }
+            )
+        
+        if period.status == PeriodStatus.LOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": ErrorCode.PERIOD_LOCKED,
+                    "message": f"Period {period.year}-{period.month:02d} is locked. No edits allowed.",
+                }
+            )
+        
+        return period
+    
     def _check_period_open(self, year: int, month: int) -> Period:
         """Check if the period exists and is open."""
         period = self.db.query(Period).filter(
@@ -366,13 +408,28 @@ class SupplyService:
     def create(
         self,
         resource_id: str,
-        year: int,
-        month: int,
+        period_id: str,
         fte_percent: int,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
     ) -> SupplyLine:
-        """Create a new supply line."""
-        # Validate period is open
-        period = self._check_period_open(year, month)
+        """Create a new supply line. Year/month are derived from period_id."""
+        # Get period and validate it's open
+        period = self._get_period_by_id(period_id)
+        
+        # If year/month are provided, validate they match the period
+        if (year is not None and year != period.year) or (month is not None and month != period.month):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": ErrorCode.VALIDATION_ERROR,
+                    "message": f"Year/month mismatch: period {period.year}-{period.month:02d} does not match provided year/month",
+                }
+            )
+        
+        # Use period's year/month
+        year = period.year
+        month = period.month
         
         # Validate FTE
         if fte_percent < 5 or fte_percent > 100 or fte_percent % 5 != 0:

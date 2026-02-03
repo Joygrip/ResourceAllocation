@@ -55,26 +55,30 @@ def setup_planning_data(client, admin_headers, finance_headers, db):
     
     # Create period for current month
     now = datetime.utcnow()
-    client.post(
+    period_resp = client.post(
         "/periods",
         json={"year": now.year, "month": now.month},
         headers=finance_headers,
     )
+    current_period_id = period_resp.json()["id"]
     
     # Create period for future month (outside 4MFC)
     future = now + relativedelta(months=6)
-    client.post(
+    future_period_resp = client.post(
         "/periods",
         json={"year": future.year, "month": future.month},
         headers=finance_headers,
     )
+    future_period_id = future_period_resp.json()["id"]
     
     return {
         "project_id": project_id,
         "resource_id": resource_id,
         "placeholder_id": placeholder_id,
+        "current_period_id": current_period_id,
         "current_year": now.year,
         "current_month": now.month,
+        "future_period_id": future_period_id,
         "future_year": future.year,
         "future_month": future.month,
     }
@@ -89,9 +93,8 @@ def test_create_demand_with_resource(client, pm_headers, setup_planning_data):
         "/demand-lines",
         json={
             "project_id": data["project_id"],
+            "period_id": data["current_period_id"],
             "resource_id": data["resource_id"],
-            "year": data["current_year"],
-            "month": data["current_month"],
             "fte_percent": 50,
         },
         headers=pm_headers,
@@ -186,9 +189,8 @@ def test_fte_invalid_range(client, pm_headers, setup_planning_data):
         "/demand-lines",
         json={
             "project_id": data["project_id"],
+            "period_id": data["current_period_id"],
             "resource_id": data["resource_id"],
-            "year": data["current_year"],
-            "month": data["current_month"],
             "fte_percent": 3,
         },
         headers=pm_headers,
@@ -203,9 +205,8 @@ def test_fte_invalid_range(client, pm_headers, setup_planning_data):
         "/demand-lines",
         json={
             "project_id": data["project_id"],
+            "period_id": data["current_period_id"],
             "resource_id": data["resource_id"],
-            "year": data["current_year"],
-            "month": data["current_month"],
             "fte_percent": 150,
         },
         headers=pm_headers,
@@ -220,9 +221,8 @@ def test_fte_invalid_step(client, pm_headers, setup_planning_data):
         "/demand-lines",
         json={
             "project_id": data["project_id"],
+            "period_id": data["current_period_id"],
             "resource_id": data["resource_id"],
-            "year": data["current_year"],
-            "month": data["current_month"],
             "fte_percent": 42,
         },
         headers=pm_headers,

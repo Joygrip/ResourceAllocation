@@ -94,8 +94,6 @@ export const Supply: React.FC = () => {
   const [formData, setFormData] = useState<CreateSupplyLine>({
     period_id: '',
     resource_id: '',
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
     fte_percent: 100,
   });
   
@@ -151,8 +149,9 @@ export const Supply: React.FC = () => {
     }
     try {
       await planningApi.createSupplyLine({
-        ...formData,
         period_id: selectedPeriod,
+        resource_id: formData.resource_id,
+        fte_percent: formData.fte_percent,
       });
       showSuccess('Supply line created');
       setIsDialogOpen(false);
@@ -162,8 +161,6 @@ export const Supply: React.FC = () => {
       setFormData({
         period_id: selectedPeriod,
         resource_id: '',
-        year: new Date().getFullYear(),
-        month: new Date().getMonth() + 1,
         fte_percent: 100,
       });
     } catch (err: unknown) {
@@ -185,6 +182,7 @@ export const Supply: React.FC = () => {
   
   const getResourceName = (id: string) => resources.find(r => r.id === id)?.display_name || 'Unknown';
   
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
   const canEdit = user?.role === 'RO' || user?.role === 'Finance';
@@ -228,6 +226,14 @@ export const Supply: React.FC = () => {
                 <DialogBody>
                   <DialogTitle>Add Supply Line</DialogTitle>
                   <DialogContent>
+                    {currentPeriod && (
+                      <div className={styles.formField} style={{ marginBottom: tokens.spacingVerticalM }}>
+                        <label>Period</label>
+                        <Body1 style={{ padding: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                          {monthNames[currentPeriod.month - 1]} {currentPeriod.year} ({currentPeriod.status})
+                        </Body1>
+                      </div>
+                    )}
                     <div className={styles.formField}>
                       <label>Resource</label>
                       <Select
@@ -241,36 +247,16 @@ export const Supply: React.FC = () => {
                       </Select>
                     </div>
                     
-                    <div className={styles.formRow} style={{ marginTop: tokens.spacingVerticalM }}>
-                      <div className={styles.formField}>
-                        <label>Year</label>
-                        <Input
-                          type="number"
-                          value={String(formData.year)}
-                          onChange={(_, data) => setFormData({ ...formData, year: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>Month</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={12}
-                          value={String(formData.month)}
-                          onChange={(_, data) => setFormData({ ...formData, month: parseInt(data.value) })}
-                        />
-                      </div>
-                      <div className={styles.formField}>
-                        <label>FTE %</label>
-                        <Input
-                          type="number"
-                          min={5}
-                          max={100}
-                          step={5}
-                          value={String(formData.fte_percent)}
-                          onChange={(_, data) => setFormData({ ...formData, fte_percent: parseInt(data.value) })}
-                        />
-                      </div>
+                    <div className={styles.formField} style={{ marginTop: tokens.spacingVerticalM }}>
+                      <label>FTE %</label>
+                      <Select
+                        value={String(formData.fte_percent)}
+                        onChange={(_, data) => setFormData({ ...formData, fte_percent: parseInt(data.value || '100') })}
+                      >
+                        {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(val => (
+                          <option key={val} value={val}>{val}%</option>
+                        ))}
+                      </Select>
                     </div>
                     
                     <MessageBar intent="info" style={{ marginTop: tokens.spacingVerticalM }}>
