@@ -367,8 +367,8 @@ def test_finance_can_read_demand(client, finance_headers, pm_headers, setup_plan
     assert len(response.json()) >= 1
 
 
-def test_finance_cannot_create_demand(client, finance_headers, setup_planning_data):
-    """Finance cannot create demand lines."""
+def test_finance_can_create_demand(client, finance_headers, setup_planning_data):
+    """Finance can create demand lines."""
     data = setup_planning_data
     response = client.post(
         "/demand-lines",
@@ -381,4 +381,75 @@ def test_finance_cannot_create_demand(client, finance_headers, setup_planning_da
         },
         headers=finance_headers,
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.json()["fte_percent"] == 50
+
+
+def test_finance_can_create_supply(client, finance_headers, setup_planning_data):
+    """Finance can create supply lines."""
+    data = setup_planning_data
+    response = client.post(
+        "/supply-lines",
+        json={
+            "resource_id": data["resource_id"],
+            "year": data["current_year"],
+            "month": data["current_month"],
+            "fte_percent": 75,
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["fte_percent"] == 75
+
+
+def test_finance_can_update_demand(client, finance_headers, pm_headers, setup_planning_data):
+    """Finance can update demand lines."""
+    data = setup_planning_data
+    # Create demand line as PM
+    create_resp = client.post(
+        "/demand-lines",
+        json={
+            "project_id": data["project_id"],
+            "resource_id": data["resource_id"],
+            "year": data["current_year"],
+            "month": data["current_month"],
+            "fte_percent": 50,
+        },
+        headers=pm_headers,
+    )
+    demand_id = create_resp.json()["id"]
+    
+    # Finance can update it
+    update_resp = client.patch(
+        f"/demand-lines/{demand_id}",
+        json={"fte_percent": 60},
+        headers=finance_headers,
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["fte_percent"] == 60
+
+
+def test_finance_can_update_supply(client, finance_headers, ro_headers, setup_planning_data):
+    """Finance can update supply lines."""
+    data = setup_planning_data
+    # Create supply line as RO
+    create_resp = client.post(
+        "/supply-lines",
+        json={
+            "resource_id": data["resource_id"],
+            "year": data["current_year"],
+            "month": data["current_month"],
+            "fte_percent": 75,
+        },
+        headers=ro_headers,
+    )
+    supply_id = create_resp.json()["id"]
+    
+    # Finance can update it
+    update_resp = client.patch(
+        f"/supply-lines/{supply_id}",
+        json={"fte_percent": 80},
+        headers=finance_headers,
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["fte_percent"] == 80

@@ -14,14 +14,8 @@ def test_admin_can_create_department(client, admin_headers, db):
     assert response.json()["code"] == "IT"
 
 
-def test_finance_cannot_create_department(client, finance_headers, db):
-    """Finance cannot create departments (read-only)."""
-    response = client.post(
-        "/admin/departments",
-        json={"code": "IT", "name": "Information Technology"},
-        headers=finance_headers,
-    )
-    assert response.status_code == 403
+# This test is now obsolete - Finance CAN create departments
+# Keeping for reference but will be replaced by test_finance_can_create_department
 
 
 def test_finance_can_create_project(client, finance_headers, db):
@@ -45,11 +39,130 @@ def test_pm_cannot_create_project(client, pm_headers, db):
     response = client.post(
         "/admin/projects",
         json={
+            "code": "PM-001",
             "name": "PM Project",
-            "investment_name": "PM-001",
-            "department_id": "dept-1",
-            "status": "active",
         },
+        headers=pm_headers,
+    )
+    assert response.status_code == 403
+
+
+def test_finance_can_create_department(client, finance_headers, db):
+    """Finance can create departments."""
+    response = client.post(
+        "/admin/departments",
+        json={"code": "FIN", "name": "Finance Department"},
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["code"] == "FIN"
+    assert response.json()["name"] == "Finance Department"
+
+
+def test_finance_can_create_cost_center(client, finance_headers, admin_headers, db):
+    """Finance can create cost centers."""
+    # First create a department (Finance can do this now)
+    dept_resp = client.post(
+        "/admin/departments",
+        json={"code": "ENG", "name": "Engineering"},
+        headers=finance_headers,
+    )
+    dept_id = dept_resp.json()["id"]
+    
+    # Finance can create cost center
+    response = client.post(
+        "/admin/cost-centers",
+        json={
+            "department_id": dept_id,
+            "code": "CC-FIN",
+            "name": "Finance Cost Center",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["code"] == "CC-FIN"
+
+
+def test_finance_can_create_resource(client, finance_headers, db):
+    """Finance can create resources."""
+    # Create department and cost center first
+    dept_resp = client.post(
+        "/admin/departments",
+        json={"code": "HR", "name": "Human Resources"},
+        headers=finance_headers,
+    )
+    dept_id = dept_resp.json()["id"]
+    
+    cc_resp = client.post(
+        "/admin/cost-centers",
+        json={"department_id": dept_id, "code": "CC-HR", "name": "HR Team"},
+        headers=finance_headers,
+    )
+    cc_id = cc_resp.json()["id"]
+    
+    # Finance can create resource
+    response = client.post(
+        "/admin/resources",
+        json={
+            "cost_center_id": cc_id,
+            "employee_id": "EMP-200",
+            "display_name": "Finance Resource",
+            "email": "finance@example.com",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "Finance Resource"
+
+
+def test_finance_can_create_placeholder(client, finance_headers, db):
+    """Finance can create placeholders."""
+    response = client.post(
+        "/admin/placeholders",
+        json={
+            "name": "Finance Placeholder",
+            "skill_profile": "Finance Analyst",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Finance Placeholder"
+
+
+def test_finance_can_create_holiday(client, finance_headers, db):
+    """Finance can create holidays."""
+    # Use ISO format string for date (Pydantic will parse it)
+    response = client.post(
+        "/admin/holidays",
+        json={
+            "name": "Finance Holiday",
+            "date": "2026-12-25T00:00:00",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Finance Holiday"
+
+
+def test_finance_cannot_manage_settings(client, finance_headers, db):
+    """Finance cannot manage settings (Admin only)."""
+    response = client.post(
+        "/admin/settings",
+        json={
+            "key": "test_setting",
+            "value": "test_value",
+            "description": "Test setting",
+        },
+        headers=finance_headers,
+    )
+    assert response.status_code == 403
+
+
+def test_pm_cannot_create_department(client, pm_headers, db):
+    """PM cannot create departments (read-only)."""
+    response = client.post(
+        "/admin/departments",
+        json={"code": "PM", "name": "PM Department"},
         headers=pm_headers,
     )
     assert response.status_code == 403

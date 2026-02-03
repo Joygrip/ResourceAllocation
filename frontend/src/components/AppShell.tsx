@@ -1,7 +1,7 @@
 /**
- * Main application shell with navigation.
+ * Enterprise AppShell with MatKat branding
  */
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   makeStyles,
@@ -15,6 +15,7 @@ import {
   MenuPopover,
   Badge,
   Tooltip,
+  Select,
 } from '@fluentui/react-components';
 import {
   HomeRegular,
@@ -37,6 +38,7 @@ import {
 } from '@fluentui/react-icons';
 import { useAuth } from '../auth/AuthProvider';
 import { config } from '../config';
+import { periodsApi, Period } from '../api/periods';
 
 const Home = bundleIcon(HomeFilled, HomeRegular);
 const Demand = bundleIcon(CalendarFilled, CalendarRegular);
@@ -57,28 +59,64 @@ const useStyles = makeStyles({
     background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
     display: 'flex',
     flexDirection: 'column',
-    padding: tokens.spacingVerticalM,
     boxShadow: tokens.shadow16,
+    zIndex: 10,
   },
-  logo: {
+  logoSection: {
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL}`,
+    borderBottom: `1px solid rgba(255, 255, 255, 0.1)`,
+    minHeight: '72px',
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingVerticalL,
-    marginBottom: tokens.spacingVerticalL,
-    borderBottom: `1px solid rgba(255, 255, 255, 0.1)`,
+  },
+  logoSlot: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    flex: 1,
+  },
+  logoIcon: {
+    width: '40px',
+    height: '40px',
+    borderRadius: tokens.borderRadiusMedium,
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    color: 'white',
+    fontWeight: tokens.fontWeightBold,
+    border: `1px solid rgba(255, 255, 255, 0.2)`,
+  },
+  logoTextContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
   },
   logoText: {
     color: 'white',
-    fontSize: tokens.fontSizeBase500,
-    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase600,
+    fontWeight: tokens.fontWeightBold,
     letterSpacing: '-0.5px',
+    lineHeight: 1.2,
+    margin: 0,
+  },
+  logoSubtext: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightMedium,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXS,
     flex: 1,
+    padding: tokens.spacingVerticalM,
+    overflowY: 'auto',
   },
   navLink: {
     display: 'flex',
@@ -90,6 +128,7 @@ const useStyles = makeStyles({
     textDecoration: 'none',
     fontSize: tokens.fontSizeBase300,
     transition: 'all 0.2s ease',
+    position: 'relative',
     '&:hover': {
       background: 'rgba(255, 255, 255, 0.1)',
       color: 'white',
@@ -105,19 +144,19 @@ const useStyles = makeStyles({
       left: 0,
       width: '3px',
       height: '24px',
-      background: '#4ecdc4',
+      background: tokens.colorBrandForeground1,
       borderRadius: '0 4px 4px 0',
     },
   },
   userSection: {
     borderTop: `1px solid rgba(255, 255, 255, 0.1)`,
-    paddingTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
   },
   userInfo: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingHorizontalM,
+    padding: tokens.spacingHorizontalS,
   },
   userName: {
     color: 'white',
@@ -133,6 +172,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    background: tokens.colorNeutralBackground2,
   },
   header: {
     display: 'flex',
@@ -142,17 +182,57 @@ const useStyles = makeStyles({
     background: 'white',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     boxShadow: tokens.shadow4,
+    minHeight: '64px',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalL,
   },
   pageTitle: {
-    fontSize: tokens.fontSizeBase500,
+    fontSize: tokens.fontSizeBase600,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
+    margin: 0,
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+  },
+  periodSelector: {
+    minWidth: '180px',
   },
   content: {
     flex: 1,
     overflow: 'auto',
     padding: tokens.spacingHorizontalXL,
-    background: '#f8fafc',
+    background: tokens.colorNeutralBackground2,
+    position: 'relative',
+  },
+  logoImage: {
+    width: '200px',
+    height: 'auto',
+    opacity: 1,
+    transition: 'opacity 0.2s ease, transform 0.2s ease',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+    display: 'block',
+    backgroundColor: 'transparent',
+    '&:hover': {
+      opacity: 0.9,
+      transform: 'scale(1.05)',
+    },
+  },
+  logoContainer: {
+    position: 'fixed',
+    bottom: '20px',
+    right: '24px',
+    zIndex: 9999,
+    pointerEvents: 'none',
+    backgroundColor: 'transparent',
+    '& img': {
+      pointerEvents: 'auto',
+    },
   },
 });
 
@@ -166,7 +246,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/demand', label: 'Demand', icon: Demand, roles: ['Admin', 'Finance', 'PM', 'RO'] },
-  { path: '/supply', label: 'Supply', icon: Supply, roles: ['Admin', 'Finance', 'RO'] }, // PM cannot edit Supply
+  { path: '/supply', label: 'Supply', icon: Supply, roles: ['Admin', 'Finance', 'RO'] },
   { path: '/actuals', label: 'Actuals', icon: Actuals, roles: ['Admin', 'Finance', 'RO', 'Employee'] },
   { path: '/approvals', label: 'Approvals', icon: Approvals, roles: ['Admin', 'RO', 'Director'] },
   { path: '/consolidation', label: 'Consolidation', icon: Consolidation, roles: ['Admin', 'Finance', 'Director'] },
@@ -183,10 +263,17 @@ const pageTitles: Record<string, string> = {
   '/admin': 'Administration',
 };
 
+const monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const styles = useStyles();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [currentPeriod, setCurrentPeriod] = useState<string>('');
 
   const visibleNavItems = navItems.filter((item) => {
     if (!item.roles) return true;
@@ -195,15 +282,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const pageTitle = pageTitles[location.pathname] || 'MatKat 2.0';
 
+  useEffect(() => {
+    loadPeriods();
+  }, []);
+
+  const loadPeriods = async () => {
+    try {
+      const data = await periodsApi.list();
+      setPeriods(data);
+      if (data.length > 0) {
+        const openPeriod = data.find((p) => p.status === 'open');
+        setCurrentPeriod(openPeriod?.id || data[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load periods:', error);
+    }
+  };
+
+
   return (
     <div className={styles.container}>
       <aside className={styles.sidebar}>
-        <div className={styles.logo}>
-          <ChartMultipleRegular style={{ fontSize: 28, color: '#4ecdc4' }} />
-          <div>
-            <span className={styles.logoText}>MatKat 2.0</span>
+        <div className={styles.logoSection}>
+          <div className={styles.logoSlot}>
+            <div className={styles.logoIcon}>MK</div>
+            <div className={styles.logoTextContainer}>
+              <div className={styles.logoText}>MatKat</div>
+              <div className={styles.logoSubtext}>2.0</div>
+            </div>
             {config.devAuthBypass && (
-              <Badge appearance="filled" color="warning" size="small" style={{ marginLeft: 8 }}>
+              <Badge appearance="filled" color="warning" size="small">
                 DEV
               </Badge>
             )}
@@ -218,7 +326,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               className={({ isActive }) =>
                 `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
               }
-              style={{ position: 'relative' }}
             >
               <item.icon style={{ fontSize: 20 }} />
               {item.label}
@@ -229,14 +336,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={styles.userSection}>
           <Menu>
             <MenuTrigger disableButtonEnhancement>
-              <Button appearance="subtle" style={{ width: '100%', justifyContent: 'flex-start' }}>
+              <Button appearance="subtle" style={{ width: '100%', justifyContent: 'flex-start', background: 'transparent' }}>
                 <div className={styles.userInfo}>
                   <Avatar
                     name={user?.display_name || 'User'}
                     color="colorful"
                     size={36}
                   />
-                  <div style={{ textAlign: 'left' }}>
+                  <div style={{ textAlign: 'left', flex: 1 }}>
                     <div className={styles.userName}>{user?.display_name}</div>
                     <div className={styles.userRole}>{user?.role}</div>
                   </div>
@@ -257,13 +364,53 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={styles.main}>
         <header className={styles.header}>
-          <h1 className={styles.pageTitle}>{pageTitle}</h1>
-          <Tooltip content={`Logged in as ${user?.email}`} relationship="description">
-            <Badge appearance="outline">{user?.tenant_id}</Badge>
-          </Tooltip>
+          <div className={styles.headerLeft}>
+            <h1 className={styles.pageTitle}>{pageTitle}</h1>
+          </div>
+          <div className={styles.headerRight}>
+            {periods.length > 0 && (
+              <Select
+                className={styles.periodSelector}
+                value={currentPeriod}
+                onChange={(_, data) => setCurrentPeriod(data.value || '')}
+              >
+                {periods.map((period) => (
+                  <option key={period.id} value={period.id}>
+                    {monthNames[period.month - 1]} {period.year} ({period.status})
+                  </option>
+                ))}
+              </Select>
+            )}
+            <Tooltip content={`Tenant: ${user?.tenant_id}`} relationship="description">
+              <Badge appearance="outline">{user?.tenant_id}</Badge>
+            </Tooltip>
+          </div>
         </header>
 
-        <div className={styles.content}>{children}</div>
+        <div className={styles.content}>
+          {children}
+        </div>
+        <div className={styles.logoContainer}>
+          <img
+            src="/logo.svg"
+            alt="Ferrosan Medical Devices Logo"
+            className={styles.logoImage}
+            style={{ 
+              display: 'block',
+              width: '200px',
+              height: 'auto'
+            }}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              console.error('Logo failed to load. Attempted path:', target.src);
+              console.error('Error event:', e);
+              // Don't hide, just log the error
+            }}
+            onLoad={() => {
+              console.log('Logo loaded successfully from /logo.svg');
+            }}
+          />
+        </div>
       </main>
     </div>
   );

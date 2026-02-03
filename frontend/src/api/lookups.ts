@@ -2,7 +2,9 @@
  * Lookups API - Read-only master data access for all roles.
  */
 import { apiClient } from './client';
-export type { Department, CostCenter, Project, Resource, Placeholder } from './admin';
+import type { Department, CostCenter, Project, Resource, Placeholder } from './admin';
+
+export type { Department, CostCenter, Project, Resource, Placeholder };
 
 export const lookupsApi = {
   listDepartments: async (): Promise<Department[]> => {

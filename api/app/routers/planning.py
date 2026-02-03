@@ -96,7 +96,7 @@ async def get_demand_line(
 async def create_demand_line(
     data: DemandLineCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.PM)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.PM, UserRole.FINANCE)),
 ):
     """
     Create a new demand line.
@@ -107,7 +107,7 @@ async def create_demand_line(
     - FTE must be 5-100 in steps of 5
     - Period must be open
     
-    Accessible to: PM
+    Accessible to: PM, Finance
     """
     service = DemandService(db, current_user)
     line = service.create(
@@ -143,12 +143,12 @@ async def update_demand_line(
     demand_id: str,
     data: DemandLineUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.PM)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.PM, UserRole.FINANCE)),
 ):
     """
     Update a demand line's FTE.
     
-    Accessible to: PM
+    Accessible to: PM, Finance
     """
     service = DemandService(db, current_user)
     line = service.update(demand_id, data.fte_percent)
@@ -176,12 +176,12 @@ async def update_demand_line(
 async def delete_demand_line(
     demand_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.PM)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.PM, UserRole.FINANCE)),
 ):
     """
     Delete a demand line.
     
-    Accessible to: PM
+    Accessible to: PM, Finance
     """
     service = DemandService(db, current_user)
     service.delete(demand_id)
@@ -261,7 +261,7 @@ async def get_supply_line(
 async def create_supply_line(
     data: SupplyLineCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.RO)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.RO, UserRole.FINANCE)),
 ):
     """
     Create a new supply line.
@@ -271,7 +271,7 @@ async def create_supply_line(
     - Period must be open
     - One supply line per resource per month
     
-    Accessible to: RO
+    Accessible to: RO, Finance
     """
     service = SupplyService(db, current_user)
     line = service.create(
@@ -301,12 +301,12 @@ async def update_supply_line(
     supply_id: str,
     data: SupplyLineUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.RO)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.RO, UserRole.FINANCE)),
 ):
     """
     Update a supply line's FTE.
     
-    Accessible to: RO
+    Accessible to: RO, Finance
     """
     service = SupplyService(db, current_user)
     line = service.update(supply_id, data.fte_percent)
@@ -330,12 +330,12 @@ async def update_supply_line(
 async def delete_supply_line(
     supply_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(UserRole.RO)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.RO, UserRole.FINANCE)),
 ):
     """
     Delete a supply line.
     
-    Accessible to: RO
+    Accessible to: RO, Finance
     """
     service = SupplyService(db, current_user)
     service.delete(supply_id)

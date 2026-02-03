@@ -26,8 +26,10 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
 # Allowed roles for read access to planning-related data (projects, resources, placeholders)
 PLANNING_READ_ROLES = (UserRole.ADMIN, UserRole.FINANCE, UserRole.PM, UserRole.RO)
-# Allowed roles for write access
+# Allowed roles for write access (Admin only - for Settings)
 WRITE_ROLES = (UserRole.ADMIN,)
+# Allowed roles for master data write access (Finance can manage master data)
+MASTER_DATA_WRITE_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
 # Allowed roles for project write access (Finance can manage projects)
 PROJECT_WRITE_ROLES = (UserRole.ADMIN, UserRole.FINANCE)
 
@@ -64,9 +66,9 @@ async def get_department(
 async def create_department(
     data: DepartmentCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Create a new department."""
+    """Create a new department. Accessible to Admin, Finance."""
     dept = Department(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(dept)
     db.commit()
@@ -80,9 +82,9 @@ async def update_department(
     department_id: str,
     data: DepartmentUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Update a department."""
+    """Update a department. Accessible to Admin, Finance."""
     dept = db.query(Department).filter(
         and_(Department.id == department_id, Department.tenant_id == current_user.tenant_id)
     ).first()
@@ -105,9 +107,9 @@ async def update_department(
 async def delete_department(
     department_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Soft delete a department (set is_active=False)."""
+    """Soft delete a department (set is_active=False). Accessible to Admin, Finance."""
     dept = db.query(Department).filter(
         and_(Department.id == department_id, Department.tenant_id == current_user.tenant_id)
     ).first()
@@ -152,9 +154,9 @@ async def get_cost_center(
 async def create_cost_center(
     data: CostCenterCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Create a new cost center."""
+    """Create a new cost center. Accessible to Admin, Finance."""
     cc = CostCenter(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(cc)
     db.commit()
@@ -168,9 +170,9 @@ async def update_cost_center(
     cost_center_id: str,
     data: CostCenterUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Update a cost center."""
+    """Update a cost center. Accessible to Admin, Finance."""
     cc = db.query(CostCenter).filter(
         and_(CostCenter.id == cost_center_id, CostCenter.tenant_id == current_user.tenant_id)
     ).first()
@@ -193,9 +195,9 @@ async def update_cost_center(
 async def delete_cost_center(
     cost_center_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Soft delete a cost center."""
+    """Soft delete a cost center. Accessible to Admin, Finance."""
     cc = db.query(CostCenter).filter(
         and_(CostCenter.id == cost_center_id, CostCenter.tenant_id == current_user.tenant_id)
     ).first()
@@ -328,9 +330,9 @@ async def get_resource(
 async def create_resource(
     data: ResourceCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Create a new resource."""
+    """Create a new resource. Accessible to Admin, Finance."""
     resource = Resource(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(resource)
     db.commit()
@@ -344,9 +346,9 @@ async def update_resource(
     resource_id: str,
     data: ResourceUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Update a resource."""
+    """Update a resource. Accessible to Admin, Finance."""
     resource = db.query(Resource).filter(
         and_(Resource.id == resource_id, Resource.tenant_id == current_user.tenant_id)
     ).first()
@@ -369,9 +371,9 @@ async def update_resource(
 async def delete_resource(
     resource_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Soft delete a resource."""
+    """Soft delete a resource. Accessible to Admin, Finance."""
     resource = db.query(Resource).filter(
         and_(Resource.id == resource_id, Resource.tenant_id == current_user.tenant_id)
     ).first()
@@ -416,9 +418,9 @@ async def get_placeholder(
 async def create_placeholder(
     data: PlaceholderCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Create a new placeholder."""
+    """Create a new placeholder. Accessible to Admin, Finance."""
     placeholder = Placeholder(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(placeholder)
     db.commit()
@@ -432,9 +434,9 @@ async def update_placeholder(
     placeholder_id: str,
     data: PlaceholderUpdate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Update a placeholder."""
+    """Update a placeholder. Accessible to Admin, Finance."""
     placeholder = db.query(Placeholder).filter(
         and_(Placeholder.id == placeholder_id, Placeholder.tenant_id == current_user.tenant_id)
     ).first()
@@ -457,9 +459,9 @@ async def update_placeholder(
 async def delete_placeholder(
     placeholder_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Soft delete a placeholder."""
+    """Soft delete a placeholder. Accessible to Admin, Finance."""
     placeholder = db.query(Placeholder).filter(
         and_(Placeholder.id == placeholder_id, Placeholder.tenant_id == current_user.tenant_id)
     ).first()
@@ -489,14 +491,18 @@ async def list_holidays(
 async def create_holiday(
     data: HolidayCreate,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Create a new holiday."""
+    """Create a new holiday. Accessible to Admin, Finance."""
     holiday = Holiday(tenant_id=current_user.tenant_id, **data.model_dump())
     db.add(holiday)
     db.commit()
     db.refresh(holiday)
-    log_audit(db, current_user, "create", "Holiday", holiday.id, new_values=data.model_dump())
+    # Convert datetime to string for JSON serialization
+    audit_values = data.model_dump()
+    if 'date' in audit_values and hasattr(audit_values['date'], 'isoformat'):
+        audit_values['date'] = audit_values['date'].isoformat()
+    log_audit(db, current_user, "create", "Holiday", holiday.id, new_values=audit_values)
     return holiday
 
 
@@ -504,9 +510,9 @@ async def create_holiday(
 async def delete_holiday(
     holiday_id: str,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    current_user: CurrentUser = Depends(require_roles(*MASTER_DATA_WRITE_ROLES)),
 ):
-    """Delete a holiday."""
+    """Delete a holiday. Accessible to Admin, Finance."""
     holiday = db.query(Holiday).filter(
         and_(Holiday.id == holiday_id, Holiday.tenant_id == current_user.tenant_id)
     ).first()

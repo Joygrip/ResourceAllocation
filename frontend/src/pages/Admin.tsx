@@ -43,6 +43,7 @@ import {
 } from '@fluentui/react-icons';
 import { adminApi, Department, CostCenter, Project, Resource, Placeholder, Holiday, Setting } from '../api/admin';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../auth/AuthProvider';
 
 const useStyles = makeStyles({
   container: {
@@ -80,8 +81,13 @@ type TabValue = 'departments' | 'cost-centers' | 'projects' | 'resources' | 'pla
 export function Admin() {
   const styles = useStyles();
   const { showSuccess, showApiError } = useToast();
+  const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState<TabValue>('departments');
   const [loading, setLoading] = useState(true);
+  
+  // Finance and Admin can manage master data; Finance cannot manage Settings
+  const canManageMasterData = user?.role === 'Admin' || user?.role === 'Finance';
+  const canManageSettings = user?.role === 'Admin';
   
   // Data states
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -126,7 +132,9 @@ export function Admin() {
           setHolidays(await adminApi.listHolidays());
           break;
         case 'settings':
-          setSettings(await adminApi.listSettings());
+          if (canManageSettings) {
+            setSettings(await adminApi.listSettings());
+          }
           break;
       }
     } catch (error) {
@@ -198,6 +206,10 @@ export function Admin() {
           await adminApi.createHoliday(formData as { date: string; name: string });
           break;
         case 'settings':
+          if (!canManageSettings) {
+            showApiError(new Error('Only Admin can manage settings'), 'Permission denied');
+            return;
+          }
           if (editItem) {
             await adminApi.updateSetting((editItem as Setting).key, formData as { value: string });
           } else {
@@ -238,6 +250,10 @@ export function Admin() {
           await adminApi.deleteHoliday((item as Holiday).id);
           break;
         case 'settings':
+          if (!canManageSettings) {
+            showApiError(new Error('Only Admin can manage settings'), 'Permission denied');
+            return;
+          }
           await adminApi.deleteSetting((item as Setting).key);
           break;
       }
@@ -275,8 +291,12 @@ export function Admin() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(dept)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(dept)} />
+                    {canManageMasterData && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(dept)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(dept)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -308,8 +328,12 @@ export function Admin() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(cc)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(cc)} />
+                    {canManageMasterData && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(cc)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(cc)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -339,8 +363,12 @@ export function Admin() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(project)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(project)} />
+                    {canManageMasterData && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(project)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(project)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -374,8 +402,12 @@ export function Admin() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(resource)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(resource)} />
+                    {canManageMasterData && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(resource)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(resource)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -405,8 +437,12 @@ export function Admin() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(ph)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(ph)} />
+                    {canManageMasterData && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(ph)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(ph)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -432,7 +468,9 @@ export function Admin() {
                   <TableCell>{holiday.name}</TableCell>
                   <TableCell>{holiday.is_company_wide ? 'Yes' : 'No'}</TableCell>
                   <TableCell>
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(holiday)} />
+                    {canManageMasterData && (
+                      <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(holiday)} />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -458,8 +496,12 @@ export function Admin() {
                   <TableCell>{setting.value}</TableCell>
                   <TableCell>{setting.description || '-'}</TableCell>
                   <TableCell>
-                    <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(setting)} />
-                    <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(setting)} />
+                    {canManageSettings && (
+                      <>
+                        <Button icon={<EditRegular />} appearance="subtle" onClick={() => openEditDialog(setting)} />
+                        <Button icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(setting)} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -710,19 +752,23 @@ export function Admin() {
           <Tab value="resources" icon={<PersonRegular />}>Resources</Tab>
           <Tab value="placeholders" icon={<PersonQuestionMarkRegular />}>Placeholders</Tab>
           <Tab value="holidays" icon={<CalendarRegular />}>Holidays</Tab>
-          <Tab value="settings" icon={<SettingsRegular />}>Settings</Tab>
+          {canManageSettings && (
+            <Tab value="settings" icon={<SettingsRegular />}>Settings</Tab>
+          )}
         </TabList>
         
         <div className={styles.tabContent}>
           <div className={styles.header}>
             <Title3>{tabLabels[selectedTab]}</Title3>
-            <Button
-              appearance="primary"
-              icon={<AddRegular />}
-              onClick={openCreateDialog}
-            >
-              Add {tabLabels[selectedTab].slice(0, -1)}
-            </Button>
+            {(canManageMasterData || (selectedTab === 'settings' && canManageSettings)) && (
+              <Button
+                appearance="primary"
+                icon={<AddRegular />}
+                onClick={openCreateDialog}
+              >
+                Add {tabLabels[selectedTab].slice(0, -1)}
+              </Button>
+            )}
           </div>
           
           {renderTable()}

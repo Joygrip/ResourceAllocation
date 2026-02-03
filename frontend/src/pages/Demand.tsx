@@ -6,7 +6,6 @@
  */
 import React, { useState, useEffect } from 'react';
 import {
-  Title1,
   Body1,
   Card,
   CardHeader,
@@ -17,7 +16,6 @@ import {
   TableHeaderCell,
   TableBody,
   TableCell,
-  Spinner,
   Badge,
   tokens,
   makeStyles,
@@ -33,7 +31,7 @@ import {
   MessageBar,
   MessageBarBody,
 } from '@fluentui/react-components';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, CalendarRegular } from '@fluentui/react-icons';
 import { planningApi, DemandLine, CreateDemandLine } from '../api/planning';
 import { periodsApi, Period } from '../api/periods';
 import { lookupsApi, Project, Resource, Placeholder } from '../api/lookups';
@@ -41,6 +39,10 @@ import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { useAuth } from '../auth/AuthProvider';
 import { ReadOnlyBanner } from '../components/ReadOnlyBanner';
+import { PageHeader } from '../components/PageHeader';
+import { StatusBanner } from '../components/StatusBanner';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingState } from '../components/LoadingState';
 
 const useStyles = makeStyles({
   container: {
@@ -214,45 +216,38 @@ export const Demand: React.FC = () => {
   
   const currentPeriod = periods.find(p => p.id === selectedPeriod);
   const isLocked = currentPeriod?.status === 'locked';
-  const canEdit = user?.role === 'PM';
-  const isReadOnly = !canEdit && (user?.role === 'Admin' || user?.role === 'Finance');
+  const canEdit = user?.role === 'PM' || user?.role === 'Finance';
+  const isReadOnly = !canEdit && user?.role === 'Admin';
   
   if (loading) {
-    return (
-      <div className={styles.loading}>
-        <Spinner size="large" label="Loading..." />
-      </div>
-    );
+    return <LoadingState message="Loading demand planning data..." />;
   }
   
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <Title1>Demand Planning</Title1>
-          <Body1>Manage project resource demand</Body1>
-        </div>
-        
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
-          <Select
-            value={selectedPeriod}
-            onChange={(_, data) => setSelectedPeriod(data.value)}
-          >
-            {periods.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.year}-{String(p.month).padStart(2, '0')} ({p.status})
-              </option>
-            ))}
-          </Select>
-          
-          {!isLocked && canEdit && (
-            <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
-              <DialogTrigger>
-                <Button appearance="primary" icon={<Add24Regular />}>
-                  Add Demand
-                </Button>
-              </DialogTrigger>
-              <DialogSurface>
+      <PageHeader
+        title="Demand Planning"
+        subtitle="Manage project resource demand"
+        actions={
+          <>
+            <Select
+              value={selectedPeriod}
+              onChange={(_, data) => setSelectedPeriod(data.value)}
+            >
+              {periods.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.year}-{String(p.month).padStart(2, '0')} ({p.status})
+                </option>
+              ))}
+            </Select>
+            {!isLocked && canEdit && (
+              <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
+                <DialogTrigger>
+                  <Button appearance="primary" icon={<Add24Regular />}>
+                    Add Demand
+                  </Button>
+                </DialogTrigger>
+                <DialogSurface>
                 <DialogBody>
                   <DialogTitle>Add Demand Line</DialogTitle>
                   <DialogContent>
@@ -359,17 +354,20 @@ export const Demand: React.FC = () => {
               </DialogSurface>
             </Dialog>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
       
       {isLocked && (
-        <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
-          <MessageBarBody>Period is locked. Editing is disabled.</MessageBarBody>
-        </MessageBar>
+        <StatusBanner
+          intent="warning"
+          title="Period Locked"
+          message="This period is locked. Editing is disabled."
+        />
       )}
       
       {isReadOnly && !isLocked && (
-        <ReadOnlyBanner message="Only PMs can edit demand lines. You can view all demand data." />
+        <ReadOnlyBanner message="Only PMs and Finance can edit demand lines. You can view all demand data." />
       )}
       
       {error && (
@@ -395,8 +393,23 @@ export const Demand: React.FC = () => {
           <TableBody>
             {demands.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
-                  <Body1>No demand lines for this period</Body1>
+                <TableCell colSpan={6} style={{ padding: tokens.spacingVerticalXXL }}>
+                  <EmptyState
+                    icon={<CalendarRegular style={{ fontSize: 48 }} />}
+                    title="No demand lines"
+                    message="No demand lines found for this period. Create one to get started."
+                    action={
+                      !isLocked && canEdit ? (
+                        <Button
+                          appearance="primary"
+                          icon={<Add24Regular />}
+                          onClick={() => setIsDialogOpen(true)}
+                        >
+                          Add Demand Line
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 </TableCell>
               </TableRow>
             ) : (
