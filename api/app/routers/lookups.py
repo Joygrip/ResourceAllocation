@@ -1,5 +1,5 @@
 """Lookup endpoints for read-only master data access by all roles."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
@@ -69,11 +69,12 @@ async def list_projects(
 
 @router.get("/resources", response_model=list[ResourceResponse])
 async def list_resources(
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of resources to return"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """
-    List all active resources.
+    List active resources (limited to prevent performance issues).
     Accessible to all roles (read-only).
     """
     return db.query(Resource).filter(
@@ -81,7 +82,7 @@ async def list_resources(
             Resource.tenant_id == current_user.tenant_id,
             Resource.is_active == True,
         )
-    ).order_by(Resource.display_name).all()
+    ).order_by(Resource.display_name).limit(limit).all()
 
 
 @router.get("/placeholders", response_model=list[PlaceholderResponse])

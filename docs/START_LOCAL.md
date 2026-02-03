@@ -3,7 +3,7 @@
 This guide explains how to start the backend and frontend services for local development.
 
 ## Quick Start (Recommended)
-
+ venv\Scripts\Activate.ps1 
 ### Option 1: Use the Startup Scripts
 
 **Windows PowerShell:**

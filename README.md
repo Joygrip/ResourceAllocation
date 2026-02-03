@@ -99,6 +99,7 @@ uvicorn api.app.main:app --reload
 
 **Note:** The backend must be run from the repo root so that `api.app.main` imports work correctly. If you need to run from the `api/` directory, set `PYTHONPATH=..` first.
 
+
 ### Frontend Setup
 
 **Windows PowerShell:**
@@ -141,6 +142,26 @@ The app supports dev auth bypass for local development:
 
 1. Set `DEV_AUTH_BYPASS=true` in both backend and frontend `.env` files
 2. Use the dev login panel in the frontend to switch roles
+
+### Example Data
+
+In development mode, example data is automatically created on first startup if the database is empty. This includes:
+
+- **4 Departments**: Engineering, Operations, Sales & Marketing, Customer Support
+- **6 Cost Centers**: Software Development, QA, Infrastructure, DevOps, Marketing, Support Team
+- **14 Users**: All roles (Admin, Finance, PMs, ROs, Directors, Employees) with manager chains
+- **5 Projects**: Project Alpha, Beta, Gamma, Infrastructure Upgrade, Marketing Campaign
+- **8 Resources**: Employee resources and external contractors
+- **4 Placeholders**: For future hiring
+- **6 Periods**: December 2025 (locked), January 2026 (locked), February-May 2026 (open)
+- **10 Demand lines**: Across multiple projects and periods
+- **9 Supply lines**: Resource capacity allocation
+- **4 Actual lines**: January 2026 time tracking (locked period)
+- **2 Approval instances**: With RO and Director steps (for signed actuals)
+
+**To reset example data:**
+- Delete `api/dev.db` and restart the backend
+- Example data will be recreated automatically on next startup
 3. Backend accepts `X-Dev-Role` and `X-Dev-Tenant` headers
 
 ## Project Structure
@@ -208,7 +229,7 @@ pytest -v
 1. **Backend running**: `uvicorn api.app.main:app --reload` (http://localhost:8000)
 2. **Frontend running**: `npm run dev` in `frontend/` (http://localhost:5173)
 3. **Dev auth bypass enabled**: Set `DEV_AUTH_BYPASS=true` in both `.env` files
-4. **Database seeded**: Call `/dev/seed` endpoint or use seed button in UI
+4. **Example data**: Automatically created on first startup if database is empty (dev mode only)
 
 ### Manual Test Checklist
 

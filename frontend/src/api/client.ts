@@ -70,14 +70,28 @@ class ApiClient {
   async get<T>(path: string): Promise<T> {
     try {
       const headers = await this.getHeaders();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: 'GET',
         headers,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       return this.handleResponse<T>(response);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
+      }
+      // Handle abort (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ApiError({
+          type: 'about:blank',
+          title: 'Request Timeout',
+          status: 0,
+          detail: 'The request took too long to complete. The server may be slow or overloaded.',
+          code: 'TIMEOUT',
+        });
       }
       // Network error or fetch failed
       throw new ApiError({
@@ -93,11 +107,15 @@ class ApiClient {
   async post<T>(path: string, data?: unknown): Promise<T> {
     try {
       const headers = await this.getHeaders();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for POST (seed can take time)
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: 'POST',
         headers,
         body: data ? JSON.stringify(data) : undefined,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       return this.handleResponse<T>(response);
     } catch (error) {
       if (error instanceof ApiError) {

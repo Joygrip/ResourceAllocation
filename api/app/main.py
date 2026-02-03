@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 
 from api.app.config import get_settings
 from api.app.routers import health, me, dev, periods, admin, planning, actuals, approvals, consolidation, notifications, lookups
+from api.app.config import get_settings
 
 # Create FastAPI app
 app = FastAPI(
@@ -142,6 +143,7 @@ app.include_router(consolidation.router)
 app.include_router(notifications.router)
 
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
@@ -149,6 +151,30 @@ async def startup_event():
     print(f"Starting Resource Allocation API in {settings.env} mode")
     if settings.dev_auth_bypass:
         print("WARNING: DEV_AUTH_BYPASS is enabled. Do not use in production!")
+    
+    # Create example data if database is empty (dev mode only)
+    if settings.is_dev and settings.dev_auth_bypass:
+        try:
+            from api.app.db.engine import get_db
+            from api.app.db.base import Base
+            from api.app.db.engine import get_engine
+            from api.app.example_data import create_example_data
+            
+            # Ensure tables exist
+            engine = get_engine()
+            Base.metadata.create_all(bind=engine)
+            
+            # Check if database is empty and create example data
+            db = next(get_db())
+            try:
+                create_example_data(db, tenant_id="dev-tenant-001")
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"⚠ Could not create example data: {e}")
+            import traceback
+            traceback.print_exc()
+    
 
 
 @app.on_event("shutdown")

@@ -76,7 +76,7 @@ def test_lookups_filter_by_tenant(client, pm_headers, db):
     db.add(project2)
     db.commit()
     
-    # PM in test-tenant-001 should only see project1 (and any seeded projects)
+    # PM in test-tenant-001 should only see project1
     response = client.get("/lookups/projects", headers=pm_headers)
     assert response.status_code == 200
     projects = response.json()

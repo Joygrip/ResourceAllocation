@@ -161,7 +161,21 @@ export const Demand: React.FC = () => {
       
       if (periodsData.length > 0) {
         const openPeriod = periodsData.find((p: Period) => p.status === 'open');
-        setSelectedPeriod(openPeriod?.id || periodsData[0].id);
+        const selectedId = openPeriod?.id || periodsData[0].id;
+        console.log('[Demand] Setting selected period:', selectedId, 'from', periodsData.length, 'periods');
+        setSelectedPeriod(selectedId);
+        // Load demands immediately after setting period to avoid race condition
+        if (selectedId) {
+          planningApi.getDemandLines(selectedId).then(data => {
+            console.log('[Demand] Loaded demand lines immediately:', data.length, data);
+            setDemands(data);
+          }).catch(err => {
+            console.error('[Demand] Failed to load demand lines:', err);
+            showApiError(err as Error, 'Failed to load demand lines');
+          });
+        }
+      } else {
+        console.warn('[Demand] No periods found!');
       }
     } catch (err: unknown) {
       setError(formatApiError(err, 'Failed to load data'));
@@ -171,10 +185,17 @@ export const Demand: React.FC = () => {
   };
   
   const loadDemands = async () => {
+    if (!selectedPeriod) {
+      console.log('[Demand] No period selected, skipping load');
+      return;
+    }
     try {
+      console.log('[Demand] Loading demand lines for period:', selectedPeriod);
       const data = await planningApi.getDemandLines(selectedPeriod);
+      console.log('[Demand] Loaded demand lines:', data.length, data);
       setDemands(data);
     } catch (err: unknown) {
+      console.error('[Demand] Failed to load demand lines:', err);
       showApiError(err as Error, 'Failed to load demand lines');
     }
   };

@@ -28,6 +28,9 @@ import {
   tokens,
   Title3,
   SelectTabEventHandler,
+  Select,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import {
   AddRegular,
@@ -44,6 +47,7 @@ import {
 import { adminApi, Department, CostCenter, Project, Resource, Placeholder, Holiday, Setting } from '../api/admin';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../auth/AuthProvider';
+import { config } from '../config';
 
 const useStyles = makeStyles({
   container: {
@@ -115,15 +119,23 @@ export function Admin() {
           setDepartments(await adminApi.listDepartments());
           break;
         case 'cost-centers':
-          setCostCenters(await adminApi.listCostCenters());
-          setDepartments(await adminApi.listDepartments());
+          const [ccData, deptData] = await Promise.all([
+            adminApi.listCostCenters(),
+            adminApi.listDepartments(),
+          ]);
+          setCostCenters(ccData);
+          setDepartments(deptData);
           break;
         case 'projects':
           setProjects(await adminApi.listProjects());
           break;
         case 'resources':
-          setResources(await adminApi.listResources());
-          setCostCenters(await adminApi.listCostCenters());
+          const [resData, ccData2] = await Promise.all([
+            adminApi.listResources(),
+            adminApi.listCostCenters(),
+          ]);
+          setResources(resData);
+          setCostCenters(ccData2);
           break;
         case 'placeholders':
           setPlaceholders(await adminApi.listPlaceholders());
@@ -138,6 +150,7 @@ export function Admin() {
           break;
       }
     } catch (error) {
+      console.error('Admin loadData error:', error);
       showApiError(error as Error, 'Failed to load admin data');
     } finally {
       setLoading(false);
@@ -796,6 +809,7 @@ export function Admin() {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+      
     </div>
   );
 }

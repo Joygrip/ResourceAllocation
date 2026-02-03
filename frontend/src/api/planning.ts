@@ -53,7 +53,11 @@ export const planningApi = {
   // Demand Lines
   async getDemandLines(periodId?: string): Promise<DemandLine[]> {
     const params = periodId ? `?period_id=${periodId}` : '';
-    return apiClient.get<DemandLine[]>(`/demand-lines${params}`);
+    const url = `/demand-lines${params}`;
+    console.log('[planningApi] GET', url);
+    const result = await apiClient.get<DemandLine[]>(url);
+    console.log('[planningApi] Response:', result.length, 'lines');
+    return result;
   },
   
   async createDemandLine(data: CreateDemandLine): Promise<DemandLine> {

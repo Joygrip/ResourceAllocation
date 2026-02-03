@@ -1,5 +1,5 @@
 """Admin CRUD endpoints for master data."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import Optional
@@ -302,13 +302,14 @@ async def delete_project(
 
 @router.get("/resources", response_model=list[ResourceResponse])
 async def list_resources(
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of resources to return"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_roles(*PLANNING_READ_ROLES)),
 ):
-    """List all resources. Accessible to Admin, Finance, PM, RO."""
+    """List resources (limited to prevent performance issues). Accessible to Admin, Finance, PM, RO."""
     return db.query(Resource).filter(
         Resource.tenant_id == current_user.tenant_id
-    ).all()
+    ).limit(limit).all()
 
 
 @router.get("/resources/{resource_id}", response_model=ResourceResponse)

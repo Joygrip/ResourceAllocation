@@ -47,8 +47,15 @@ async def list_demand_lines(
         ).first()
         if period:
             lines = service.get_all(period.year, period.month)
+            # Debug logging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Demand lines query: period_id={period_id}, year={period.year}, month={period.month}, tenant={current_user.tenant_id}, found {len(lines)} lines")
         else:
             lines = []
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Period not found: period_id={period_id}, tenant={current_user.tenant_id}")
     else:
         lines = service.get_all(year, month)
     

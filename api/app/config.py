@@ -1,6 +1,8 @@
 """Application configuration."""
 from functools import lru_cache
+from pathlib import Path
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -26,6 +28,7 @@ class Settings(BaseSettings):
     # Azure Application Insights
     appinsights_connection_string: str = ""
     
+    
     @property
     def is_dev(self) -> bool:
         return self.env == "dev"
@@ -36,9 +39,13 @@ class Settings(BaseSettings):
             return []
         return [t.strip() for t in self.azure_tenant_allowlist.split(",") if t.strip()]
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8-sig"
+    model_config = ConfigDict(
+        # Look for .env in repo root (where uvicorn is run from)
+        # Also check api/.env as fallback
+        env_file=[".env", "api/.env"],
+        env_file_encoding="utf-8-sig",
+        extra="ignore",  # Ignore extra fields from .env that don't match Settings
+    )
 
 
 @lru_cache()
