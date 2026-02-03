@@ -43,7 +43,7 @@ import {
 } from '@fluentui/react-icons';
 import { actualsApi, ActualLine, CreateActualLine } from '../api/actuals';
 import { periodsApi, Period } from '../api/periods';
-import { adminApi, Project, Resource } from '../api/admin';
+import { lookupsApi, Project, Resource } from '../api/lookups';
 import { useToast } from '../hooks/useToast';
 import { formatApiError } from '../utils/errors';
 import { ApiError } from '../types';
