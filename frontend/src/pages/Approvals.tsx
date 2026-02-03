@@ -45,14 +45,42 @@ import { useAuth } from '../auth/AuthProvider';
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingHorizontalXXL,
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
+    minHeight: 'calc(100vh - 80px)',
   },
   header: {
-    marginBottom: tokens.spacingVerticalXL,
+    marginBottom: tokens.spacingVerticalXXL,
+    paddingBottom: tokens.spacingVerticalL,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke2}`,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: tokens.fontSizeHero800,
+    fontWeight: tokens.fontWeightBold,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: tokens.spacingVerticalXS,
+    lineHeight: '1.2',
+  },
+  pageSubtitle: {
+    fontSize: tokens.fontSizeBase400,
+    color: tokens.colorNeutralForeground3,
+    fontWeight: tokens.fontWeightRegular,
   },
   card: {
     marginBottom: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusLarge,
+    boxShadow: tokens.shadow4,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      boxShadow: tokens.shadow8,
+    },
   },
   loading: {
     display: 'flex',
@@ -60,41 +88,95 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
   },
   approvalItem: {
-    padding: tokens.spacingVerticalM,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: tokens.spacingHorizontalL,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    '&:last-child': {
+      borderBottom: 'none',
+    },
   },
   stepFlow: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
-    marginTop: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   step: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-    padding: tokens.spacingVerticalXS,
-    paddingLeft: tokens.spacingHorizontalM,
-    paddingRight: tokens.spacingHorizontalM,
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground3,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    transition: 'all 0.2s ease',
+    minWidth: '120px',
+    justifyContent: 'center',
   },
   stepApproved: {
     backgroundColor: tokens.colorPaletteGreenBackground2,
+    color: tokens.colorPaletteGreenForeground1,
+    border: `1px solid ${tokens.colorPaletteGreenBorderActive}`,
   },
   stepRejected: {
     backgroundColor: tokens.colorPaletteRedBackground2,
+    color: tokens.colorPaletteRedForeground1,
+    border: `1px solid ${tokens.colorPaletteRedBorderActive}`,
   },
   stepPending: {
     backgroundColor: tokens.colorPaletteYellowBackground2,
+    color: tokens.colorPaletteYellowForeground1,
+    border: `1px solid ${tokens.colorPaletteYellowBorderActive}`,
+    animation: 'pulse 2s ease-in-out infinite',
   },
   stepSkipped: {
     backgroundColor: tokens.colorNeutralBackground4,
+    color: tokens.colorNeutralForeground3,
+    opacity: 0.6,
   },
   actions: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalL,
+    paddingTop: tokens.spacingVerticalM,
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  emptyState: {
+    padding: tokens.spacingVerticalXXL,
+    textAlign: 'center',
+  },
+  emptyStateIcon: {
+    fontSize: '64px',
+    color: tokens.colorPaletteGreenForeground1,
+    marginBottom: tokens.spacingVerticalM,
+    opacity: 0.8,
+  },
+  stepDetails: {
     marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  stepDetailItem: {
+    padding: tokens.spacingVerticalS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    '&:last-child': {
+      borderBottom: 'none',
+    },
+  },
+  '@keyframes pulse': {
+    '0%, 100%': {
+      opacity: 1,
+    },
+    '50%': {
+      opacity: 0.7,
+    },
   },
 });
 
@@ -230,9 +312,9 @@ export const Approvals: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div>
-          <Title1>Approvals</Title1>
-          <Body1>Review and action pending approvals</Body1>
+        <div className={styles.headerContent}>
+          <h1 className={styles.pageTitle}>Approvals</h1>
+          <p className={styles.pageSubtitle}>Review and action pending approvals</p>
         </div>
         <Button
           icon={<ArrowClockwise24Regular />}
@@ -252,10 +334,10 @@ export const Approvals: React.FC = () => {
       
       {approvals.length === 0 ? (
         <Card className={styles.card}>
-          <div style={{ padding: tokens.spacingVerticalXL, textAlign: 'center' }}>
-            <CheckmarkCircle24Regular style={{ fontSize: 48, color: tokens.colorPaletteGreenForeground1 }} />
-            <Title1 style={{ marginTop: tokens.spacingVerticalM }}>All caught up!</Title1>
-            <Body1>No pending approvals in your inbox.</Body1>
+          <div className={styles.emptyState}>
+            <CheckmarkCircle24Regular className={styles.emptyStateIcon} />
+            <Title1 style={{ marginTop: tokens.spacingVerticalM, marginBottom: tokens.spacingVerticalXS }}>All caught up!</Title1>
+            <Body1 style={{ color: tokens.colorNeutralForeground3 }}>No pending approvals in your inbox.</Body1>
           </div>
         </Card>
       ) : (
@@ -289,7 +371,9 @@ export const Approvals: React.FC = () => {
                   </AccordionHeader>
                   <AccordionPanel>
                     <div className={styles.approvalItem}>
-                      <Body1>Created: {new Date(approval.created_at).toLocaleString()}</Body1>
+                      <Body1 style={{ color: tokens.colorNeutralForeground3, marginBottom: tokens.spacingVerticalM }}>
+                        Created: {new Date(approval.created_at).toLocaleString()}
+                      </Body1>
                       
                       {/* Step flow visualization */}
                       <div className={styles.stepFlow}>
@@ -300,21 +384,36 @@ export const Approvals: React.FC = () => {
                               <span>{step.step_name}</span>
                             </div>
                             {index < approval.steps.length - 1 && (
-                              <ArrowForward24Regular />
+                              <ArrowForward24Regular style={{ color: tokens.colorNeutralForeground3 }} />
                             )}
                           </React.Fragment>
                         ))}
                       </div>
                       
                       {/* Step details */}
-                      <div style={{ marginTop: tokens.spacingVerticalM }}>
+                      <div className={styles.stepDetails}>
                         {approval.steps.map(step => (
-                          <div key={step.id} style={{ marginBottom: tokens.spacingVerticalXS }}>
+                          <div key={step.id} className={styles.stepDetailItem}>
                             <Body1>
-                              <strong>{step.step_name}:</strong> {step.status}
-                              {step.actioned_at && ` - ${new Date(step.actioned_at).toLocaleString()}`}
-                              {step.comment && ` - "${step.comment}"`}
+                              <strong style={{ color: tokens.colorNeutralForeground1 }}>{step.step_name}:</strong>{' '}
+                              <Badge 
+                                appearance="filled" 
+                                color={step.status === 'approved' ? 'success' : step.status === 'rejected' ? 'danger' : 'warning'}
+                                style={{ marginLeft: tokens.spacingHorizontalS }}
+                              >
+                                {step.status}
+                              </Badge>
+                              {step.actioned_at && (
+                                <span style={{ color: tokens.colorNeutralForeground3, marginLeft: tokens.spacingHorizontalM }}>
+                                  {new Date(step.actioned_at).toLocaleString()}
+                                </span>
+                              )}
                             </Body1>
+                            {step.comment && (
+                              <Body1 style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground2, fontStyle: 'italic' }}>
+                                "{step.comment}"
+                              </Body1>
+                            )}
                           </div>
                         ))}
                       </div>

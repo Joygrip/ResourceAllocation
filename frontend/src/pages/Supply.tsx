@@ -45,20 +45,67 @@ import { ReadOnlyBanner } from '../components/ReadOnlyBanner';
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingHorizontalXXL,
-    maxWidth: '1200px',
+    maxWidth: '1600px',
     margin: '0 auto',
+    minHeight: 'calc(100vh - 80px)',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: tokens.spacingVerticalXL,
+    alignItems: 'flex-start',
+    marginBottom: tokens.spacingVerticalXXL,
+    paddingBottom: tokens.spacingVerticalL,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke2}`,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: tokens.fontSizeHero800,
+    fontWeight: tokens.fontWeightBold,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: tokens.spacingVerticalXS,
+    lineHeight: '1.2',
+  },
+  pageSubtitle: {
+    fontSize: tokens.fontSizeBase400,
+    color: tokens.colorNeutralForeground3,
+    fontWeight: tokens.fontWeightRegular,
   },
   card: {
     marginBottom: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusLarge,
+    boxShadow: tokens.shadow4,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      boxShadow: tokens.shadow8,
+    },
   },
   table: {
     width: '100%',
+    '& thead': {
+      backgroundColor: tokens.colorNeutralBackground2,
+    },
+    '& th': {
+      fontWeight: tokens.fontWeightSemibold,
+      fontSize: tokens.fontSizeBase300,
+      color: tokens.colorNeutralForeground2,
+      padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      borderBottom: `2px solid ${tokens.colorNeutralStroke2}`,
+    },
+    '& td': {
+      padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+      borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    },
+    '& tbody tr': {
+      transition: 'background-color 0.15s ease',
+      '&:hover': {
+        backgroundColor: tokens.colorNeutralBackground1,
+      },
+    },
   },
   formRow: {
     display: 'flex',
@@ -70,6 +117,13 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXS,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  formLabel: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: tokens.spacingVerticalXXS,
   },
   loading: {
     display: 'flex',
@@ -200,9 +254,9 @@ export const Supply: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div>
-          <Title1>Supply Planning</Title1>
-          <Body1>Manage resource availability</Body1>
+        <div className={styles.headerContent}>
+          <h1 className={styles.pageTitle}>Supply Planning</h1>
+          <p className={styles.pageSubtitle}>Manage resource availability</p>
         </div>
         
         <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
